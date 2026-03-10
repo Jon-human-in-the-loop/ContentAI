@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: contentai-db
+    environment:
+      POSTGRES_USER: contentai
+      POSTGRES_PASSWORD: contentai_dev
+      POSTGRES_DB: contentai
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U contentai']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis (Cache + BullMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: contentai-redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (S3-compatible storage for dev)
+  minio:
+    image: minio/minio:latest
+    container_name: contentai-storage
+    environment:
+      MINIO_ROOT_USER: contentai
+      MINIO_ROOT_PASSWORD: contentai_dev
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - miniodata:/data
+    command: server /data --console-address ":9001"
+
+  # BullMQ Dashboard (optional, for monitoring)
+  bull-board:
+    image: deadly0/bull-board:latest
+    container_name: contentai-bull-board
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      BULL_PREFIX: bull
+    ports:
+      - '3030:3000'
+    depends_on:
+      - redis
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

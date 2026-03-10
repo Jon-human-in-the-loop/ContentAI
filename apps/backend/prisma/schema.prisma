@@ -1,0 +1,327 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MULTI-TENANCY
+// ============================================
+
+model Organization {
+  id               String   @id @default(uuid()) @db.Uuid
+  name             String   @db.VarChar(255)
+  slug             String   @unique @db.VarChar(100)
+  plan             Plan     @default(STARTER)
+  monthlyTokenLimit BigInt  @default(1000000) @map("monthly_token_limit")
+  tokensUsed       BigInt   @default(0) @map("tokens_used")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  users           User[]
+  clients         Client[]
+  templates       Template[]
+  contentRequests ContentRequest[]
+  apiUsageLogs    ApiUsageLog[]
+
+  @@map("organizations")
+}
+
+enum Plan {
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  name         String   @db.VarChar(255)
+  role         UserRole @default(EDITOR)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  organization    Organization     @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  contentRequests ContentRequest[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+// ============================================
+// GESTIÓN DE CLIENTES
+// ============================================
+
+model Client {
+  id          String   @id @default(uuid()) @db.Uuid
+  orgId       String   @map("org_id") @db.Uuid
+  name        String   @db.VarChar(255)
+  industry    String?  @db.VarChar(100)
+  description String?  @db.Text
+  logoUrl     String?  @map("logo_url") @db.VarChar(500)
+  website     String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  organization    Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  branding        ClientBranding?
+  socialAccounts  ClientSocialAccount[]
+  templates       Template[]
+  contentRequests ContentRequest[]
+  contentPieces   ContentPiece[]
+
+  @@map("clients")
+}
+
+model ClientBranding {
+  id              String   @id @default(uuid()) @db.Uuid
+  clientId        String   @unique @map("client_id") @db.Uuid
+  primaryColor    String?  @map("primary_color") @db.VarChar(7)
+  secondaryColor  String?  @map("secondary_color") @db.VarChar(7)
+  accentColor     String?  @map("accent_color") @db.VarChar(7)
+  fontPrimary     String?  @map("font_primary") @db.VarChar(100)
+  fontSecondary   String?  @map("font_secondary") @db.VarChar(100)
+  toneOfVoice     String?  @map("tone_of_voice") @db.Text
+  styleKeywords   String[] @map("style_keywords")
+  prohibitions    String[] @map("prohibitions")
+  sampleContent   String?  @map("sample_content") @db.Text
+  brandGuidelinesUrl String? @map("brand_guidelines_url") @db.VarChar(500)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_branding")
+}
+
+model ClientSocialAccount {
+  id           String    @id @default(uuid()) @db.Uuid
+  clientId     String    @map("client_id") @db.Uuid
+  platform     Platform
+  accountId    String?   @map("account_id") @db.VarChar(255)
+  accountName  String?   @map("account_name") @db.VarChar(255)
+  accessToken  String?   @map("access_token") @db.Text
+  refreshToken String?   @map("refresh_token") @db.Text
+  tokenExpiresAt DateTime? @map("token_expires_at")
+  connectedAt  DateTime  @default(now()) @map("connected_at")
+
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  publishQueue PublishQueue[]
+
+  @@map("client_social_accounts")
+}
+
+enum Platform {
+  INSTAGRAM
+  FACEBOOK
+  TIKTOK
+  LINKEDIN
+  X
+  THREADS
+}
+
+// ============================================
+// TEMPLATES
+// ============================================
+
+model Template {
+  id           String   @id @default(uuid()) @db.Uuid
+  orgId        String   @map("org_id") @db.Uuid
+  clientId     String?  @map("client_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  type         ContentType
+  platform     Platform?
+  canvasData   Json?    @map("canvas_data")
+  thumbnailUrl String?  @map("thumbnail_url") @db.VarChar(500)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  client       Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@map("templates")
+}
+
+// ============================================
+// GENERACIÓN DE CONTENIDO
+// ============================================
+
+model ContentRequest {
+  id              String        @id @default(uuid()) @db.Uuid
+  orgId           String        @map("org_id") @db.Uuid
+  clientId        String        @map("client_id") @db.Uuid
+  userId          String?       @map("user_id") @db.Uuid
+  brief           String        @db.Text
+  contentTypes    Json          @map("content_types") // {"POST": 3, "REEL": 2}
+  platforms       Platform[]
+  templateIds     String[]      @map("template_ids") @db.Uuid
+  status          RequestStatus @default(PENDING)
+  totalPieces     Int           @default(0) @map("total_pieces")
+  completedPieces Int           @default(0) @map("completed_pieces")
+  estimatedCost   Decimal?      @map("estimated_cost") @db.Decimal(10, 4)
+  actualCost      Decimal?      @map("actual_cost") @db.Decimal(10, 4)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  completedAt     DateTime?     @map("completed_at")
+
+  organization Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user         User?          @relation(fields: [userId], references: [id])
+  pieces       ContentPiece[]
+
+  @@map("content_requests")
+}
+
+enum RequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ContentType {
+  POST
+  REEL
+  STORY
+  CAROUSEL
+}
+
+model ContentPiece {
+  id          String      @id @default(uuid()) @db.Uuid
+  requestId   String      @map("request_id") @db.Uuid
+  clientId    String      @map("client_id") @db.Uuid
+  orgId       String      @map("org_id") @db.Uuid
+  type        ContentType
+  platform    Platform?
+  status      PieceStatus @default(GENERATING)
+
+  // Generated content
+  caption     String?     @db.Text
+  hashtags    String[]
+  visualPrompt String?    @map("visual_prompt") @db.Text
+  script      String?     @db.Text
+  hook        String?     @db.Text
+  cta         String?     @db.Text
+
+  // Generation metadata
+  modelUsed       String?  @map("model_used") @db.VarChar(100)
+  tokensInput     Int?     @map("tokens_input")
+  tokensOutput    Int?     @map("tokens_output")
+  generationCost  Decimal? @map("generation_cost") @db.Decimal(10, 4)
+  generationTimeMs Int?    @map("generation_time_ms")
+
+  // Scheduling
+  scheduledAt  DateTime?  @map("scheduled_at")
+  publishedAt  DateTime?  @map("published_at")
+  publishResult Json?     @map("publish_result")
+
+  // Versioning
+  version   Int     @default(1)
+  parentId  String? @map("parent_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  request      ContentRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  parent       ContentPiece?  @relation("ContentVersions", fields: [parentId], references: [id])
+  versions     ContentPiece[] @relation("ContentVersions")
+  publishQueue PublishQueue[]
+  apiUsageLogs ApiUsageLog[]
+
+  @@map("content_pieces")
+}
+
+enum PieceStatus {
+  GENERATING
+  DRAFT
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  REJECTED
+  FAILED
+}
+
+// ============================================
+// AI CACHE
+// ============================================
+
+model AiCache {
+  id         String   @id @default(uuid()) @db.Uuid
+  cacheKey   String   @map("cache_key") @db.VarChar(64)
+  model      String?  @db.VarChar(100)
+  promptHash String?  @map("prompt_hash") @db.VarChar(64)
+  response   String   @db.Text
+  tokensSaved Int?    @map("tokens_saved")
+  hitCount   Int      @default(0) @map("hit_count")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  @@unique([cacheKey, model])
+  @@index([cacheKey])
+  @@index([expiresAt])
+  @@map("ai_cache")
+}
+
+// ============================================
+// COST TRACKING
+// ============================================
+
+model ApiUsageLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  orgId          String?  @map("org_id") @db.Uuid
+  model          String   @db.VarChar(100)
+  tokensInput    Int      @map("tokens_input")
+  tokensOutput   Int      @map("tokens_output")
+  cost           Decimal  @db.Decimal(10, 6)
+  taskType       String?  @map("task_type") @db.VarChar(50)
+  contentPieceId String?  @map("content_piece_id") @db.Uuid
+  cached         Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization? @relation(fields: [orgId], references: [id])
+  contentPiece ContentPiece? @relation(fields: [contentPieceId], references: [id])
+
+  @@index([orgId, createdAt])
+  @@map("api_usage_log")
+}
+
+// ============================================
+// PUBLISHING
+// ============================================
+
+model PublishQueue {
+  id              String       @id @default(uuid()) @db.Uuid
+  contentPieceId  String       @map("content_piece_id") @db.Uuid
+  platform        Platform
+  socialAccountId String       @map("social_account_id") @db.Uuid
+  scheduledAt     DateTime     @map("scheduled_at")
+  status          PublishStatus @default(QUEUED)
+  attempts        Int          @default(0)
+  maxAttempts     Int          @default(3) @map("max_attempts")
+  lastError       String?      @map("last_error") @db.Text
+  publishedAt     DateTime?    @map("published_at")
+  externalPostId  String?      @map("external_post_id") @db.VarChar(255)
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  contentPiece  ContentPiece        @relation(fields: [contentPieceId], references: [id])
+  socialAccount ClientSocialAccount @relation(fields: [socialAccountId], references: [id])
+
+  @@index([scheduledAt, status])
+  @@map("publish_queue")
+}
+
+enum PublishStatus {
+  QUEUED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
