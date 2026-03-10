@@ -1,11 +1,11 @@
 // Queue names
 export const QUEUES = {
-  CONTENT_GENERATE: 'content:generate',
-  CONTENT_REFINE: 'content:refine',
-  CONTENT_HASHTAGS: 'content:hashtags',
-  CONTENT_VISUAL: 'content:visual',
-  PUBLISH_EXECUTE: 'publish:execute',
-  PUBLISH_SCHEDULE: 'publish:schedule',
+  CONTENT_GENERATE: 'content_generate',
+  CONTENT_REFINE: 'content_refine',
+  CONTENT_HASHTAGS: 'content_hashtags',
+  CONTENT_VISUAL: 'content_visual',
+  PUBLISH_EXECUTE: 'publish_execute',
+  PUBLISH_SCHEDULE: 'publish_schedule',
 } as const;
 
 // AI Model configuration
