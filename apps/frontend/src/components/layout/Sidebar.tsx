@@ -13,6 +13,7 @@ const navItems = [
   { id: 'content', label: 'Contenido', icon: '▦' },
   { id: 'calendar', label: 'Calendario', icon: '▣' },
   { id: 'analytics', label: 'Analytics', icon: '◆' },
+  { id: 'settings', label: 'Configuración', icon: '⚙' },
 ];
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {

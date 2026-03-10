@@ -32,12 +32,15 @@ export function DashboardPage() {
     async function loadData() {
       try {
         const [dashStats, rawClients, rawRequests] = await Promise.all([
-          api('/analytics/dashboard'),
-          api('/clients'),
-          api('/content/requests')
+          api('/analytics/dashboard').catch(() => null),
+          api('/clients').catch(() => []),
+          api('/content/requests').catch(() => [])
         ]);
         
-        setStats(dashStats);
+        setStats(dashStats || {
+          overview: { totalClients: 0, monthlyPieces: 0, totalPieces: 0 },
+          costs: { monthlySpend: 0, apiCalls: 0, tokenBudget: { usagePercent: 0, used: 0, limit: 1000000 } },
+        });
         
         const mappedClients = (rawClients || []).map((c: any) => ({
           ...c,
@@ -56,6 +59,10 @@ export function DashboardPage() {
         setRecentPieces(allPieces.slice(0, 6));
       } catch (err) {
         console.error('Failed to load dashboard:', err);
+        setStats({
+          overview: { totalClients: 0, monthlyPieces: 0, totalPieces: 0 },
+          costs: { monthlySpend: 0, apiCalls: 0, tokenBudget: { usagePercent: 0, used: 0, limit: 1000000 } },
+        });
       } finally {
         setLoading(false);
       }
@@ -64,7 +71,6 @@ export function DashboardPage() {
   }, []);
 
   if (loading) return <div className="p-8">Cargando dashboard...</div>;
-  if (!stats) return <div className="p-8">Error cargando dashboard</div>;
 
   return (
     <div className="space-y-6 animate-in">

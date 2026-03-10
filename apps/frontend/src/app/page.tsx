@@ -8,6 +8,7 @@ import { GeneratePage } from '@/components/pages/GeneratePage';
 import { ContentPage } from '@/components/pages/ContentPage';
 import { CalendarPage } from '@/components/pages/CalendarPage';
 import { AnalyticsPage } from '@/components/pages/AnalyticsPage';
+import { SettingsPage } from '@/components/pages/SettingsPage';
 
 const pages: Record<string, React.ComponentType> = {
   dashboard: DashboardPage,
@@ -16,6 +17,7 @@ const pages: Record<string, React.ComponentType> = {
   content: ContentPage,
   calendar: CalendarPage,
   analytics: AnalyticsPage,
+  settings: SettingsPage,
 };
 
 export default function Home() {
