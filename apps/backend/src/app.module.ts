@@ -12,6 +12,9 @@ import { PublishingModule } from './modules/publishing/publishing.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { PrismaModule } from './database/prisma.module';
 import { RedisModule } from './config/redis.module';
+import { EncryptionModule } from './common/encryption.module';
+import { OAuthModule } from './modules/oauth/oauth.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -25,9 +28,10 @@ import { RedisModule } from './config/redis.module';
         return { connection: { host: config.get('REDIS_HOST', 'localhost'), port: parseInt(config.get('REDIS_PORT', '6379')) } };
       },
     }),
-    PrismaModule, RedisModule,
+    PrismaModule, RedisModule, EncryptionModule,
     AuthModule, ClientsModule, ContentModule, GenerationModule,
     TemplatesModule, CalendarModule, PublishingModule, AnalyticsModule,
+    OAuthModule, SettingsModule,
   ],
 })
 export class AppModule {}

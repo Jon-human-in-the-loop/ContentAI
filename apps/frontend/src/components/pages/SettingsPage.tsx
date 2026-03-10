@@ -1,167 +1,190 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/primitives';
 import { Label } from '@/components/ui/primitives';
 import { Badge } from '@/components/ui/primitives';
+import { api } from '@/lib/api';
 
-interface PlatformConfig {
+// ─── Platform Definitions ────────────────────────────────────────
+interface PlatformDef {
   id: string;
   name: string;
   icon: string;
-  connected: boolean;
   description: string;
+  oauthPlatform: string;
 }
 
-const platforms: PlatformConfig[] = [
-  { id: 'instagram', name: 'Instagram', icon: '📷', connected: false, description: 'Publicar fotos, reels, stories y carruseles' },
-  { id: 'facebook', name: 'Facebook', icon: '📘', connected: false, description: 'Publicar en páginas y grupos de Facebook' },
-  { id: 'tiktok', name: 'TikTok', icon: '🎵', connected: false, description: 'Compartir videos cortos y contenido viral' },
-  { id: 'linkedin', name: 'LinkedIn', icon: '💼', connected: false, description: 'Publicar contenido corporativo y profesional' },
-  { id: 'x', name: 'X (Twitter)', icon: '𝕏', connected: false, description: 'Tweets, hilos e interacción en tiempo real' },
-  { id: 'threads', name: 'Threads', icon: '🧵', connected: false, description: 'Publicar en la plataforma de Meta' },
+const platforms: PlatformDef[] = [
+  { id: 'instagram', name: 'Instagram', icon: '📷', description: 'Fotos, reels, stories y carruseles', oauthPlatform: 'instagram' },
+  { id: 'facebook', name: 'Facebook', icon: '📘', description: 'Páginas y grupos', oauthPlatform: 'facebook' },
+  { id: 'tiktok', name: 'TikTok', icon: '🎵', description: 'Videos cortos y contenido viral', oauthPlatform: 'tiktok' },
+  { id: 'linkedin', name: 'LinkedIn', icon: '💼', description: 'Contenido corporativo y profesional', oauthPlatform: 'linkedin' },
+  { id: 'x', name: 'X (Twitter)', icon: '𝕏', description: 'Tweets, hilos e interacción', oauthPlatform: 'x' },
+  { id: 'threads', name: 'Threads', icon: '🧵', description: 'Publicaciones en Meta Threads', oauthPlatform: 'threads' },
 ];
 
-interface ApiKeyConfig {
-  id: string;
+// ─── API Key Definitions ─────────────────────────────────────────
+interface ApiKeyDef {
+  provider: string;
   name: string;
   description: string;
   placeholder: string;
-  envVar: string;
 }
 
-const apiKeys: ApiKeyConfig[] = [
-  { id: 'anthropic', name: 'Anthropic (Claude)', description: 'Motor de IA para generación de contenido', placeholder: 'sk-ant-...', envVar: 'ANTHROPIC_API_KEY' },
-  { id: 'openai', name: 'OpenAI (GPT)', description: 'Motor de IA alternativo', placeholder: 'sk-...', envVar: 'OPENAI_API_KEY' },
-  { id: 'meta_business', name: 'Meta Business API', description: 'Para publicar en Instagram y Facebook', placeholder: 'EAAx...', envVar: 'META_ACCESS_TOKEN' },
-  { id: 'linkedin_api', name: 'LinkedIn API', description: 'Para publicar contenido en LinkedIn', placeholder: 'AQV...', envVar: 'LINKEDIN_ACCESS_TOKEN' },
-  { id: 'tiktok_api', name: 'TikTok API', description: 'Para publicar videos en TikTok', placeholder: 'act.xxx...', envVar: 'TIKTOK_ACCESS_TOKEN' },
-  { id: 'x_api', name: 'X (Twitter) API', description: 'Para publicar tweets y hilos', placeholder: 'AAAAAx...', envVar: 'X_BEARER_TOKEN' },
+const apiKeyDefs: ApiKeyDef[] = [
+  { provider: 'anthropic', name: 'Anthropic (Claude)', description: 'Motor IA principal para generación de contenido', placeholder: 'sk-ant-...' },
+  { provider: 'openai', name: 'OpenAI (GPT)', description: 'Motor IA alternativo', placeholder: 'sk-...' },
 ];
 
-export function SettingsPage() {
-  const [keys, setKeys] = useState<Record<string, string>>({});
-  const [savedKeys, setSavedKeys] = useState<Record<string, boolean>>({});
-  const [platformStates, setPlatformStates] = useState<Record<string, boolean>>({});
+// ─── Types ───────────────────────────────────────────────────────
+interface SavedKey {
+  provider: string;
+  label: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-  const handleSaveKey = (id: string) => {
-    if (keys[id]?.trim()) {
-      setSavedKeys(prev => ({ ...prev, [id]: true }));
-      // In production, this would POST to the backend to securely store the key
-      setTimeout(() => {
-        setSavedKeys(prev => ({ ...prev, [id]: false }));
-      }, 2000);
+export function SettingsPage() {
+  const [savedKeys, setSavedKeys] = useState<SavedKey[]>([]);
+  const [keyInputs, setKeyInputs] = useState<Record<string, string>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [connectedPlatforms] = useState<string[]>([]); // Will come from backend
+
+  // Load saved keys on mount
+  useEffect(() => {
+    async function loadKeys() {
+      try {
+        const keys = await api('/settings/api-keys');
+        setSavedKeys(keys || []);
+      } catch (err) {
+        console.error('Failed to load API keys:', err);
+      }
+    }
+    loadKeys();
+  }, []);
+
+  const handleSaveKey = async (provider: string) => {
+    const key = keyInputs[provider];
+    if (!key?.trim()) return;
+
+    setSavingKey(provider);
+    try {
+      const saved = await api('/settings/api-keys', {
+        method: 'POST',
+        body: JSON.stringify({ provider, key }),
+      });
+      setSavedKeys(prev => {
+        const filtered = prev.filter(k => k.provider !== provider);
+        return [...filtered, saved];
+      });
+      setKeyInputs(prev => ({ ...prev, [provider]: '' }));
+      setSaveSuccess(provider);
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (err) {
+      console.error('Failed to save key:', err);
+    } finally {
+      setSavingKey(null);
     }
   };
 
-  const handleConnectPlatform = (id: string) => {
-    setPlatformStates(prev => ({ ...prev, [id]: !prev[id] }));
+  const handleDeleteKey = async (provider: string) => {
+    try {
+      await api(`/settings/api-keys/${provider}`, { method: 'DELETE' });
+      setSavedKeys(prev => prev.filter(k => k.provider !== provider));
+    } catch (err) {
+      console.error('Failed to delete key:', err);
+    }
   };
 
+  const handleConnectPlatform = (oauthPlatform: string) => {
+    // TODO: When auth is wired, use the actual client ID
+    const clientId = '00000000-0000-0000-0000-000000000001';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:4000';
+    window.location.href = `${backendUrl}/api/v1/oauth/${oauthPlatform}/authorize?clientId=${clientId}`;
+  };
+
+  const getSavedKey = (provider: string) => savedKeys.find(k => k.provider === provider);
+
   return (
-    <div className="space-y-8 animate-in">
+    <div className="space-y-8 animate-in max-w-4xl">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Configuración</h1>
-        <p className="text-muted-foreground text-sm mt-1">Administrá tus API keys y plataformas conectadas</p>
+        <p className="text-muted-foreground text-sm mt-1">Conectá tus plataformas y administrá tus claves de IA de forma segura</p>
       </div>
 
-      {/* API Keys Section */}
+      {/* ─── API Keys Section ───────────────────────────────────────── */}
       <div>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <span className="text-base">🔑</span> API Keys
-        </h2>
-        <div className="grid grid-cols-1 gap-3">
-          {apiKeys.map((apiKey) => (
-            <Card key={apiKey.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold text-sm">{apiKey.name}</span>
-                      {savedKeys[apiKey.id] && (
-                        <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">
-                          ✓ Guardada
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-3">{apiKey.description}</p>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder={apiKey.placeholder}
-                        value={keys[apiKey.id] || ''}
-                        onChange={(e) => setKeys(prev => ({ ...prev, [apiKey.id]: e.target.value }))}
-                        className="flex-1 text-sm font-mono"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => handleSaveKey(apiKey.id)}
-                        className="bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-sm hover:shadow-md transition-shadow shrink-0"
-                      >
-                        Guardar
-                      </Button>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5 font-mono">
-                      Variable: {apiKey.envVar}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white text-sm">🔑</div>
+          <div>
+            <h2 className="text-lg font-semibold">Claves de Inteligencia Artificial</h2>
+            <p className="text-xs text-muted-foreground">Encriptadas con AES-256 en el servidor. Nunca se almacenan en texto plano.</p>
+          </div>
         </div>
-      </div>
 
-      {/* Platforms Section */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <span className="text-base">🌐</span> Plataformas
-        </h2>
-        <div className="grid grid-cols-2 gap-4">
-          {platforms.map((platform) => {
-            const connected = platformStates[platform.id] || false;
+        <div className="space-y-3">
+          {apiKeyDefs.map((def) => {
+            const saved = getSavedKey(def.provider);
+            const isSaving = savingKey === def.provider;
+            const justSaved = saveSuccess === def.provider;
+
             return (
-              <Card
-                key={platform.id}
-                className={`border-0 shadow-sm hover:shadow-md transition-all cursor-pointer ${
-                  connected ? 'ring-2 ring-emerald-400' : ''
-                }`}
-              >
+              <Card key={def.provider} className="border-0 shadow-sm">
                 <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-xl shadow-sm">
-                        {platform.icon}
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{def.name}</span>
+                        {saved && (
+                          <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">
+                            🔒 Encriptada
+                          </Badge>
+                        )}
+                        {justSaved && (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0 animate-in">
+                            ✓ Guardada
+                          </Badge>
+                        )}
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-sm">{platform.name}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{platform.description}</p>
-                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{def.description}</p>
                     </div>
+                    {saved && (
+                      <button
+                        onClick={() => handleDeleteKey(def.provider)}
+                        className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                    )}
                   </div>
-                  <div className="mt-4 flex items-center justify-between">
-                    <Badge
-                      variant="secondary"
-                      className={`text-[10px] px-2 py-0.5 ${
-                        connected
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {connected ? '● Conectada' : '○ Desconectada'}
-                    </Badge>
+
+                  {saved && (
+                    <div className="mb-3 px-3 py-2 bg-muted/50 rounded-lg">
+                      <span className="text-xs font-mono text-muted-foreground tracking-wider">{saved.label}</span>
+                      <span className="text-[10px] text-muted-foreground block mt-0.5">
+                        Guardada {new Date(saved.updatedAt).toLocaleDateString('es-AR')}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Input
+                      type="password"
+                      placeholder={saved ? 'Pegar nueva key para reemplazar...' : def.placeholder}
+                      value={keyInputs[def.provider] || ''}
+                      onChange={(e) => setKeyInputs(prev => ({ ...prev, [def.provider]: e.target.value }))}
+                      className="flex-1 text-sm font-mono"
+                    />
                     <Button
                       size="sm"
-                      variant={connected ? 'outline' : 'default'}
-                      onClick={() => handleConnectPlatform(platform.id)}
-                      className={
-                        connected
-                          ? 'text-red-500 border-red-200 hover:bg-red-50'
-                          : 'bg-gradient-to-r from-violet-500 to-violet-600 text-white'
-                      }
+                      onClick={() => handleSaveKey(def.provider)}
+                      disabled={isSaving || !keyInputs[def.provider]?.trim()}
+                      className="bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-sm hover:shadow-md transition-shadow shrink-0 disabled:opacity-50"
                     >
-                      {connected ? 'Desconectar' : 'Conectar'}
+                      {isSaving ? '...' : saved ? 'Reemplazar' : 'Guardar'}
                     </Button>
                   </div>
                 </CardContent>
@@ -171,19 +194,96 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* Info note */}
-      <Card className="border-0 shadow-sm bg-violet-50/50">
-        <CardContent className="p-4">
+      {/* ─── Platforms Section ──────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white text-sm">🌐</div>
+          <div>
+            <h2 className="text-lg font-semibold">Plataformas</h2>
+            <p className="text-xs text-muted-foreground">Conectá vía OAuth 2.0 — nunca pedimos tus contraseñas ni API keys.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {platforms.map((platform) => {
+            const isConnected = connectedPlatforms.includes(platform.id);
+
+            return (
+              <Card
+                key={platform.id}
+                className={`border-0 shadow-sm hover:shadow-md transition-all ${
+                  isConnected ? 'ring-2 ring-emerald-400/60' : ''
+                }`}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-xl shadow-sm border border-slate-100">
+                      {platform.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-sm">{platform.name}</h3>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{platform.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Badge
+                      variant="secondary"
+                      className={`text-[10px] px-2 py-0.5 ${
+                        isConnected
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {isConnected ? '● Conectada' : '○ Disponible'}
+                    </Badge>
+
+                    {isConnected ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-500 border-red-200 hover:bg-red-50 text-xs"
+                      >
+                        Desconectar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleConnectPlatform(platform.oauthPlatform)}
+                        className="bg-gradient-to-r from-violet-500 to-violet-600 text-white text-xs shadow-sm"
+                      >
+                        Conectar con {platform.name}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─── Security Notice ───────────────────────────────────────── */}
+      <Card className="border-0 shadow-sm bg-gradient-to-r from-violet-50/80 to-emerald-50/50">
+        <CardContent className="p-5">
           <div className="flex items-start gap-3">
-            <span className="text-lg mt-0.5">💡</span>
+            <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg shrink-0">🛡️</div>
             <div>
-              <p className="text-sm font-medium text-violet-900">Nota importante</p>
-              <p className="text-xs text-violet-700/70 mt-1">
-                Las API keys se almacenan de forma segura y encriptada en el servidor.
-                Para conectar plataformas como Instagram o Facebook, necesitás configurar
-                primero la API key correspondiente (Meta Business API) y autorizar la aplicación
-                desde el panel de desarrolladores de cada plataforma.
-              </p>
+              <p className="text-sm font-semibold text-violet-900">Seguridad de tus datos</p>
+              <ul className="text-xs text-violet-700/70 mt-2 space-y-1.5">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-500 mt-0.5">✓</span>
+                  <span><strong>API Keys de IA</strong> — Encriptadas con AES-256-GCM en nuestro servidor. Ni siquiera nosotros podemos verlas en texto plano en la base de datos.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-500 mt-0.5">✓</span>
+                  <span><strong>Redes sociales</strong> — Conectadas vía OAuth 2.0. Sos redirigido a la página oficial de cada plataforma para autorizar. Nunca manejamos tus contraseñas.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-emerald-500 mt-0.5">✓</span>
+                  <span><strong>Tokens</strong> — Los Access Tokens de cada red se guardan encriptados y se refrescan automáticamente cuando expiran.</span>
+                </li>
+              </ul>
             </div>
           </div>
         </CardContent>

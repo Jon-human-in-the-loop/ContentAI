@@ -26,6 +26,7 @@ model Organization {
   templates       Template[]
   contentRequests ContentRequest[]
   apiUsageLogs    ApiUsageLog[]
+  orgApiKeys      OrgApiKey[]
 
   @@map("organizations")
 }
@@ -292,6 +293,25 @@ model ApiUsageLog {
 
   @@index([orgId, createdAt])
   @@map("api_usage_log")
+}
+
+// ============================================
+// ENCRYPTED API KEYS
+// ============================================
+
+model OrgApiKey {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  provider      String   @db.VarChar(50) // "anthropic", "openai"
+  encryptedKey  String   @map("encrypted_key") @db.Text
+  label         String?  @db.VarChar(100) // masked version for display
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, provider])
+  @@map("org_api_keys")
 }
 
 // ============================================
