@@ -1,8 +1,8 @@
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
+RUN apt-get update -y && apt-get install -y openssl python3 make g++ && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN apk add --no-cache openssl
 RUN npm ci
 COPY . .
 RUN npx prisma generate
