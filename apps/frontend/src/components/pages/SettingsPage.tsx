@@ -101,7 +101,20 @@ export function SettingsPage() {
   const handleConnectPlatform = (oauthPlatform: string) => {
     // TODO: When auth is wired, use the actual client ID
     const clientId = '00000000-0000-0000-0000-000000000001';
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:4000';
+    let backendUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    
+    // Clean up backend URL to not include /api/v1 trailing
+    backendUrl = backendUrl.replace(/\/api\/v1\/?$/, '').replace(/\/+$/, '');
+
+    // Ensure it's an absolute URL
+    if (backendUrl && !backendUrl.startsWith('http')) {
+      backendUrl = `https://${backendUrl}`;
+    }
+
+    if (!backendUrl) {
+      backendUrl = 'http://localhost:4000';
+    }
+
     window.location.href = `${backendUrl}/api/v1/oauth/${oauthPlatform}/authorize?clientId=${clientId}`;
   };
 

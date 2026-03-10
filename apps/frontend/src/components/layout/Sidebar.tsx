@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/primitives';
+import { api } from '@/lib/api';
 
 interface SidebarProps {
   currentPage: string;
@@ -17,6 +18,36 @@ const navItems = [
 ];
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+  const [org, setOrg] = useState({ 
+    name: 'Cargando...', 
+    plan: '...', 
+    tokensUsed: 0, 
+    monthlyTokenLimit: 1000000 
+  });
+
+  useEffect(() => {
+    async function loadOrg() {
+      try {
+        const data = await api('/settings/organization/current');
+        setOrg(data);
+      } catch (err) {
+        console.error('Failed to load org data for sidebar:', err);
+      }
+    }
+    loadOrg();
+  }, []);
+
+  const tokenPercent = Math.min(
+    100, 
+    org.monthlyTokenLimit > 0 ? (org.tokensUsed / org.monthlyTokenLimit) * 100 : 0
+  );
+
+  const formatTokens = (num: number) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(0) + 'k';
+    return num.toString();
+  };
+
   return (
     <aside className="sidebar-gradient w-[260px] min-h-screen flex flex-col text-white/90 select-none">
       {/* Brand */}
@@ -67,17 +98,22 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       <div className="px-4 py-5 mx-3 mb-4 rounded-xl bg-white/[0.05] border border-white/[0.06]">
         <div className="flex items-center gap-2.5 mb-2">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-violet-500 flex items-center justify-center text-[11px] font-bold text-white">
-            A
+            {org.name.charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="text-[12.5px] text-white/80 font-medium">Mi Agencia</div>
-            <div className="text-[10.5px] text-white/30">Plan Pro</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[12.5px] text-white/80 font-medium truncate">{org.name}</div>
+            <div className="text-[10.5px] text-white/30">Plan {org.plan}</div>
           </div>
         </div>
         <div className="w-full bg-white/10 rounded-full h-1.5 mt-2">
-          <div className="bg-gradient-to-r from-violet-400 to-emerald-400 h-1.5 rounded-full" style={{ width: '57%' }} />
+          <div 
+            className="bg-gradient-to-r from-violet-400 to-emerald-400 h-1.5 rounded-full transition-all duration-1000" 
+            style={{ width: `${tokenPercent}%` }} 
+          />
         </div>
-        <div className="text-[10px] text-white/30 mt-1.5">2.8M / 5M tokens usados</div>
+        <div className="text-[10px] text-white/30 mt-1.5">
+          {formatTokens(org.tokensUsed)} / {formatTokens(org.monthlyTokenLimit)} tokens usados
+        </div>
       </div>
     </aside>
   );
