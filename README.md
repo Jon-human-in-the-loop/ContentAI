@@ -1,96 +1,108 @@
-# ContentAI Backend
+# ContentAI 🤖✨
 
-AI-powered content generation platform for social media agencies.
+**ContentAI** is an AI-powered content generation SaaS platform designed specifically for social media agencies. It allows agencies to manage multiple clients, generate high-quality on-brand content using LLMs (Claude), schedule posts, and analyze API costs all in one unified dashboard.
 
-## Architecture
+![ContentAI Dashboard Concept](./docs/contentai-dashboard.html)
 
-See [ARCHITECTURE.md](../ARCHITECTURE.md) for the full system design.
+---
 
-## Quick Start
+## 🚀 Key Features
+
+*   **Multi-tenant Architecture:** Manage multiple organizations/agencies and their respective clients with specific "Brand Voice" profiles (tone, colors, prohibitions, styles).
+*   **Intelligent Content Generation:** Uses an AI Orchestrator (Router) to dynamically select the best LLM model for the specific task (e.g., *Claude 3.5 Sonnet* for creative copywriting, *Haiku* for hashtag generation or formatting) to optimize API costs.
+*   **Asynchronous Processing:** Built on **BullMQ** and **Redis** to handle heavy AI generation queues, rate limits, and fallback strategies silently in the background.
+*   **Multi-Level AI Caching:** Implements Exact Match caching (Redis) and Semantic caching (PostgreSQL) to avoid regenerating identical or highly similar content, drastically reducing API costs.
+*   **Automated Social Publishing:** Native integrations to publish directly to Meta Graph API (Instagram, Facebook), LinkedIn API, and X API.
+*   **Cost Tracking & Analytics:** Real-time dashboard showing daily API costs, model breakdown usage, and token utilization per client.
+
+---
+
+## 🛠️ Tech Stack
+
+**Frontend**
+*   [Next.js 14](https://nextjs.org/) (App Router)
+*   React & TypeScript
+*   Tailwind CSS
+*   [shadcn/ui](https://ui.shadcn.com/) (Radix UI) for accessible, beautiful components
+*   Recharts for analytics graphics
+
+**Backend**
+*   [NestJS](https://nestjs.com/) (Node.js framework)
+*   TypeScript
+*   [Prisma ORM](https://www.prisma.io/)
+*   PostgreSQL (Primary Database)
+*   Redis (Caching & BullMQ)
+
+**AI & Integrations**
+*   Anthropic API (Claude 3.5 Sonnet & Haiku)
+*   Meta Graph API, LinkedIn API, X API v2
+
+---
+
+## 📂 Repository Structure
+
+This is a monorepo containing both the frontend and backend applications.
+
+``` text
+ContentIA/
+├── apps/
+│   ├── frontend/         # Next.js Web Application
+│   │   ├── src/          # React components, pages, and hooks
+│   │   └── package.json
+│   │
+│   └── backend/          # NestJS API & Workers
+│       ├── prisma/       # Database schema and migrations
+│       ├── src/
+│       │   └── modules/  # Auth, Analytics, Clients, Content, Generation (AI workers), Publishing
+│       └── package.json
+│
+├── docs/                 # Documentation and Design mockups
+├── docker-compose.yml    # Infrastructure for local development (Redis, Postgres)
+├── ARCHITECTURE.md       # Detailed system architecture and queues diagram
+└── README.md             # This file
+```
+
+---
+
+## 🏎️ Quick Start (Local Development)
 
 ### Prerequisites
-- Node.js 20+
-- Docker & Docker Compose
-- Anthropic API key
+*   Node.js 20+
+*   Docker & Docker Compose (for PostgreSQL and Redis)
+*   Anthropic API Key
 
-### Setup
-
+### 1. Start Infrastructure
+Run the database and Redis cache via Docker.
 ```bash
-# 1. Start infrastructure
-cd docker && docker-compose up -d
+docker-compose up -d
+```
 
-# 2. Install dependencies
+### 2. Backend Setup
+```bash
+cd apps/backend
 npm install
-
-# 3. Configure environment
-cp .env.example .env
-# Edit .env with your ANTHROPIC_API_KEY
-
-# 4. Run database migrations
+cp .env.example .env   # Configure your ANTHROPIC_API_KEY and database URL here
+npx prisma generate
 npx prisma migrate dev
-
-# 5. Seed demo data (optional)
-npm run prisma:seed
-
-# 6. Start development server
 npm run start:dev
 ```
 
-### API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/v1/auth/register | Register org + user |
-| POST | /api/v1/auth/login | Login |
-| GET | /api/v1/clients | List clients |
-| POST | /api/v1/clients | Create client |
-| GET | /api/v1/clients/:id | Get client details |
-| PUT | /api/v1/clients/:id | Update client |
-| POST | /api/v1/content/requests | Create generation request |
-| GET | /api/v1/content/requests | List requests |
-| GET | /api/v1/content/pieces/:id | Get content piece |
-| PATCH | /api/v1/content/pieces/:id/approve | Approve piece |
-| PATCH | /api/v1/content/pieces/:id/reject | Reject piece |
-| GET | /api/v1/calendar?start=&end= | Calendar view |
-| POST | /api/v1/calendar/schedule | Schedule a piece |
-| GET | /api/v1/analytics/dashboard | Dashboard metrics |
-| GET | /api/v1/analytics/costs | Cost history |
-
-### Project Structure
-
-```
-src/
-├── main.ts                      # Entry point
-├── app.module.ts                # Root module
-├── config/                      # Redis, S3 config
-├── database/                    # Prisma service
-├── common/                      # Shared utilities
-│   ├── constants.ts             # Queue names, model config
-│   ├── guards/                  # Auth guards
-│   └── decorators/              # Custom decorators
-└── modules/
-    ├── auth/                    # JWT auth, registration
-    ├── clients/                 # Client CRUD + branding
-    ├── content/                 # Content requests & pieces
-    ├── generation/              # AI workers (core)
-    │   ├── ai-router.service    # Model selection per task
-    │   ├── ai-cache.service     # Multi-level caching
-    │   ├── prompt-builder       # Prompt templates per type
-    │   ├── cost-tracker         # Token & cost tracking
-    │   └── generation.worker    # BullMQ processor
-    ├── templates/               # Visual templates
-    ├── calendar/                # Scheduling
-    ├── publishing/              # Social media publishing
-    │   ├── publishing.service   # Platform connectors
-    │   ├── publishing.worker    # Publish queue processor
-    │   └── publishing.scheduler # Cron: check due posts
-    └── analytics/               # Dashboard & cost reports
+### 3. Frontend Setup
+In a new terminal:
+```bash
+cd apps/frontend
+npm install
+npm run dev
 ```
 
-### Cost Optimization Strategy
+Visit `http://localhost:3000` to access the application.
 
-1. **Model Routing**: Creative tasks → Sonnet, repetitive → Haiku (~60% cheaper)
-2. **Multi-level Cache**: Exact match (Redis) → Semantic (PostgreSQL) → Templates
-3. **Batch Processing**: Group same-client requests to share context
-4. **Token Budgets**: Configurable per organization/plan
-5. **Progressive Generation**: Generate 1, if approved, create variations with lite model
+---
+
+## 📖 Architecture Deep Dive
+
+For a complete understanding of the BullMQ worker pipelines, multi-level catching strategy, and the full DB schema, please refer to the [ARCHITECTURE.md](./ARCHITECTURE.md) document.
+
+---
+
+*Built for modern content agencies looking to scale their production without skyrocketing API costs.*
