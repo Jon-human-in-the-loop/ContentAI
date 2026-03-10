@@ -4,7 +4,7 @@ import { ApiKeysService } from './api-keys.service';
 // TODO: Replace hardcoded orgId with auth-extracted orgId from JWT when auth is wired
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
-@Controller('api/v1/settings/api-keys')
+@Controller('settings/api-keys')
 export class ApiKeysController {
   constructor(private readonly apiKeysService: ApiKeysService) {}
 

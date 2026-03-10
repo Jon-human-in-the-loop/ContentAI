@@ -3,7 +3,7 @@ import { Response } from 'express';
 import { OAuthService } from './oauth.service';
 import { ConfigService } from '@nestjs/config';
 
-@Controller('api/v1/oauth')
+@Controller('oauth')
 export class OAuthController {
   private readonly logger = new Logger(OAuthController.name);
 

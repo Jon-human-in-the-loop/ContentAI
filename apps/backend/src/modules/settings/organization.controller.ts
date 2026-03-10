@@ -4,7 +4,7 @@ import { PrismaService } from '../../database/prisma.service';
 // TODO: Replace with authenticated user's org JWT
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
-@Controller('api/v1/settings/organization')
+@Controller('settings/organization')
 export class OrganizationController {
   constructor(private readonly prisma: PrismaService) {}
 
