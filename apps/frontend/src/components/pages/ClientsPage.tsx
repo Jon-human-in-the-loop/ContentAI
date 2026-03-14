@@ -13,11 +13,51 @@ const platformIcons: Record<string, string> = {
   INSTAGRAM: '📷', FACEBOOK: '📘', TIKTOK: '🎵', LINKEDIN: '💼', X: '𝕏', THREADS: '🧵',
 };
 
+const ALL_PLATFORMS = ['INSTAGRAM', 'FACEBOOK', 'TIKTOK', 'LINKEDIN', 'X', 'THREADS'];
+
+const platformLabels: Record<string, string> = {
+  INSTAGRAM: 'Instagram', FACEBOOK: 'Facebook', TIKTOK: 'TikTok',
+  LINKEDIN: 'LinkedIn', X: 'X (Twitter)', THREADS: 'Threads',
+};
+
+interface NewClientForm {
+  name: string;
+  industry: string;
+  website: string;
+  description: string;
+  toneOfVoice: string;
+  targetAudience: string;
+  primaryColor: string;
+  secondaryColor: string;
+  font: string;
+  keywords: string;
+  prohibitedWords: string;
+  platforms: string[];
+}
+
+const emptyForm: NewClientForm = {
+  name: '',
+  industry: '',
+  website: '',
+  description: '',
+  toneOfVoice: '',
+  targetAudience: '',
+  primaryColor: '#6c63ff',
+  secondaryColor: '#f0efff',
+  font: '',
+  keywords: '',
+  prohibitedWords: '',
+  platforms: ['INSTAGRAM'],
+};
+
 export function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState<NewClientForm>(emptyForm);
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     async function loadClients() {
@@ -49,6 +89,56 @@ export function ClientsPage() {
     c.industry.toLowerCase().includes(search.toLowerCase())
   );
 
+  const togglePlatform = (p: string) => {
+    setForm(prev => ({
+      ...prev,
+      platforms: prev.platforms.includes(p)
+        ? prev.platforms.filter(x => x !== p)
+        : [...prev.platforms, p],
+    }));
+  };
+
+  const handleCreate = async () => {
+    if (!form.name.trim() || !form.industry.trim()) return;
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        industry: form.industry.trim(),
+        website: form.website.trim() || undefined,
+        description: form.description.trim() || undefined,
+        branding: {
+          primaryColor: form.primaryColor,
+          secondaryColor: form.secondaryColor,
+          font: form.font.trim() || undefined,
+          toneOfVoice: form.toneOfVoice.trim() || undefined,
+          targetAudience: form.targetAudience.trim() || undefined,
+          keywords: form.keywords ? form.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+          prohibitedWords: form.prohibitedWords ? form.prohibitedWords.split(',').map(w => w.trim()).filter(Boolean) : [],
+        },
+        platforms: form.platforms,
+      };
+      const created = await api('/clients', { method: 'POST', body: JSON.stringify(payload) });
+      setClients(prev => [...prev, {
+        id: created.id,
+        name: created.name,
+        industry: created.industry || '',
+        logoUrl: created.logoUrl || '',
+        primaryColor: created.branding?.primaryColor || form.primaryColor,
+        secondaryColor: created.branding?.secondaryColor || form.secondaryColor,
+        toneOfVoice: created.branding?.toneOfVoice || '',
+        totalPieces: 0,
+        platforms: form.platforms,
+      }]);
+      setForm(emptyForm);
+      setDialogOpen(false);
+    } catch (err) {
+      console.error('Failed to create client:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-between">
@@ -56,56 +146,205 @@ export function ClientsPage() {
           <h1 className="text-3xl font-semibold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground text-sm mt-1">{clients.length} clientes activos</p>
         </div>
+
+        {/* ── New Client Dialog ── */}
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow">
+            <Button
+              className="bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow"
+              onClick={() => setDialogOpen(true)}
+            >
               + Nuevo cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Nuevo Cliente</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Completá los datos de la marca para que la IA genere contenido personalizado</p>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Nombre</Label>
-                  <Input placeholder="Nombre del negocio" className="mt-1" />
-                </div>
-                <div>
-                  <Label className="text-xs">Rubro</Label>
-                  <Input placeholder="Ej: Restaurante, Gym" className="mt-1" />
-                </div>
-              </div>
+
+            <div className="space-y-5 pt-1">
+
+              {/* ── Sección 1: Datos básicos ── */}
               <div>
-                <Label className="text-xs">Tono de voz</Label>
-                <Textarea placeholder="Describí cómo habla esta marca..." className="mt-1" rows={3} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-xs">Color primario</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <input type="color" defaultValue="#6c63ff" className="w-8 h-8 rounded border cursor-pointer" />
-                    <Input placeholder="#hex" className="flex-1" />
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Datos básicos</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Nombre del negocio *</Label>
+                    <Input
+                      placeholder="Ej: La Parrilla de Juan"
+                      className="mt-1"
+                      value={form.name}
+                      onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Rubro / Industria *</Label>
+                    <Input
+                      placeholder="Ej: Restaurante, Gym, E-commerce"
+                      className="mt-1"
+                      value={form.industry}
+                      onChange={e => setForm(p => ({ ...p, industry: e.target.value }))}
+                    />
                   </div>
                 </div>
-                <div>
-                  <Label className="text-xs">Color secundario</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <input type="color" defaultValue="#f0efff" className="w-8 h-8 rounded border cursor-pointer" />
-                    <Input placeholder="#hex" className="flex-1" />
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label className="text-xs">Sitio web</Label>
+                    <Input
+                      placeholder="https://..."
+                      className="mt-1"
+                      value={form.website}
+                      onChange={e => setForm(p => ({ ...p, website: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Fuente corporativa</Label>
+                    <Input
+                      placeholder="Ej: Montserrat, Poppins"
+                      className="mt-1"
+                      value={form.font}
+                      onChange={e => setForm(p => ({ ...p, font: e.target.value }))}
+                    />
                   </div>
                 </div>
-                <div>
-                  <Label className="text-xs">Fuente</Label>
-                  <Input placeholder="Ej: Montserrat" className="mt-1" />
+                <div className="mt-3">
+                  <Label className="text-xs">Descripción del negocio</Label>
+                  <Textarea
+                    placeholder="Breve descripción de qué hace esta marca, qué vende, qué la hace especial..."
+                    className="mt-1"
+                    rows={2}
+                    value={form.description}
+                    onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  />
                 </div>
               </div>
+
+              {/* ── Sección 2: Identidad de marca ── */}
               <div>
-                <Label className="text-xs">Palabras prohibidas</Label>
-                <Input placeholder="barato, gratis, oferta (separadas por coma)" className="mt-1" />
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Identidad de marca</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Color primario</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="color"
+                        value={form.primaryColor}
+                        onChange={e => setForm(p => ({ ...p, primaryColor: e.target.value }))}
+                        className="w-9 h-9 rounded-lg border cursor-pointer p-0.5 bg-white"
+                      />
+                      <Input
+                        placeholder="#6c63ff"
+                        className="flex-1"
+                        value={form.primaryColor}
+                        onChange={e => setForm(p => ({ ...p, primaryColor: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Color secundario</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="color"
+                        value={form.secondaryColor}
+                        onChange={e => setForm(p => ({ ...p, secondaryColor: e.target.value }))}
+                        className="w-9 h-9 rounded-lg border cursor-pointer p-0.5 bg-white"
+                      />
+                      <Input
+                        placeholder="#f0efff"
+                        className="flex-1"
+                        value={form.secondaryColor}
+                        onChange={e => setForm(p => ({ ...p, secondaryColor: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Color preview */}
+                <div
+                  className="mt-2 h-2 rounded-full"
+                  style={{ background: `linear-gradient(to right, ${form.primaryColor}, ${form.secondaryColor})` }}
+                />
               </div>
-              <Button className="w-full">Crear cliente</Button>
+
+              {/* ── Sección 3: Voz y audiencia ── */}
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Voz y audiencia (para la IA)</p>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs">Tono de voz</Label>
+                    <Textarea
+                      placeholder="Ej: Cercano, divertido, sin tecnicismos. Usa emojis con moderación. Habla como un amigo que sabe del tema."
+                      className="mt-1"
+                      rows={2}
+                      value={form.toneOfVoice}
+                      onChange={e => setForm(p => ({ ...p, toneOfVoice: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Público objetivo</Label>
+                    <Input
+                      placeholder="Ej: Mujeres 25-40, amantes del fitness, Buenos Aires"
+                      className="mt-1"
+                      value={form.targetAudience}
+                      onChange={e => setForm(p => ({ ...p, targetAudience: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Palabras clave</Label>
+                      <Input
+                        placeholder="healthy, organic, bienestar"
+                        className="mt-1"
+                        value={form.keywords}
+                        onChange={e => setForm(p => ({ ...p, keywords: e.target.value }))}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Separadas por coma</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Palabras prohibidas</Label>
+                      <Input
+                        placeholder="barato, gratis, oferta"
+                        className="mt-1"
+                        value={form.prohibitedWords}
+                        onChange={e => setForm(p => ({ ...p, prohibitedWords: e.target.value }))}
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Separadas por coma</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Sección 4: Plataformas ── */}
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Plataformas activas</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {ALL_PLATFORMS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => togglePlatform(p)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                        form.platforms.includes(p)
+                          ? 'border-violet-400 bg-violet-50 text-violet-700 font-medium'
+                          : 'border-border bg-background text-muted-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <span>{platformIcons[p]}</span>
+                      <span className="text-xs">{platformLabels[p]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Submit ── */}
+              <Button
+                className="w-full bg-gradient-to-r from-violet-500 to-violet-600 text-white h-11 font-medium shadow-lg shadow-violet-500/20"
+                onClick={handleCreate}
+                disabled={saving || !form.name.trim() || !form.industry.trim()}
+              >
+                {saving ? 'Creando...' : 'Crear cliente'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -127,7 +366,6 @@ export function ClientsPage() {
             }`}
             onClick={() => setSelectedClient(selectedClient?.id === client.id ? null : client)}
           >
-            {/* Color bar */}
             <div className="h-1.5 w-full" style={{ background: `linear-gradient(to right, ${client.primaryColor}, ${client.secondaryColor})` }} />
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-3">
@@ -158,7 +396,6 @@ export function ClientsPage() {
                 <span className="text-xs text-muted-foreground font-medium">{client.totalPieces} piezas</span>
               </div>
 
-              {/* Colors preview */}
               <div className="flex gap-1.5 mt-3">
                 <div className="w-6 h-6 rounded-md shadow-inner border border-black/5" style={{ background: client.primaryColor }} title="Primario" />
                 <div className="w-6 h-6 rounded-md shadow-inner border border-black/5" style={{ background: client.secondaryColor }} title="Secundario" />
@@ -201,7 +438,7 @@ export function ClientsPage() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Plataformas</p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {selectedClient.platforms.map((p) => (
                     <Badge key={p} variant="secondary" className="text-xs">
                       {platformIcons[p]} {p}

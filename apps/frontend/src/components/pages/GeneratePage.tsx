@@ -149,19 +149,23 @@ export function GeneratePage() {
                 </div>
               </div>
 
-              {/* Cost estimate */}
+              {/* Resumen de generación */}
               <div className="bg-muted/50 rounded-lg p-3">
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Total piezas</span>
                   <span className="font-semibold text-foreground">{totalPieces}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Costo estimado</span>
-                  <span className="font-semibold text-foreground">~${(totalPieces * 0.004).toFixed(3)}</span>
+                  <span>Posts</span>
+                  <span>{posts[0]}</span>
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Modelos</span>
-                  <span>Sonnet + Haiku</span>
+                  <span>Reels</span>
+                  <span>{reels[0]}</span>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>Stories</span>
+                  <span>{stories[0]}</span>
                 </div>
               </div>
 
@@ -266,8 +270,7 @@ export function GeneratePage() {
                               </div>
                             )}
                             <div className="flex items-center gap-4 pt-2">
-                              <span className="text-[10px] text-muted-foreground">Modelo: {piece.modelUsed.split('-').slice(-2).join(' ')}</span>
-                              <span className="text-[10px] text-muted-foreground">Costo: ${piece.generationCost.toFixed(4)}</span>
+                              <span className="text-[10px] text-muted-foreground">Generado con IA</span>
                             </div>
                             <div className="flex gap-2 pt-1">
                               <Button size="sm" variant="outline" className="text-xs h-7">Editar</Button>
