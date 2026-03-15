@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Param, Res, Logger } from '@nestjs/common';
+import { Controller, Get, Query, Param, Res, Request, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { OAuthService } from './oauth.service';
 import { ConfigService } from '@nestjs/config';
@@ -11,6 +11,17 @@ export class OAuthController {
     private readonly oauthService: OAuthService,
     private readonly config: ConfigService,
   ) {}
+
+  /**
+   * GET /api/v1/oauth/accounts?clientId=xxx
+   * List connected social accounts for a client
+   */
+  @Get('accounts')
+  async getAccounts(@Request() req, @Query('clientId') clientId: string) {
+    const orgId = req.user?.orgId || 'demo-org';
+    if (!clientId) return [];
+    return this.oauthService.getConnectedAccounts(orgId, clientId);
+  }
 
   /**
    * GET /api/v1/oauth/:platform/authorize?clientId=xxx

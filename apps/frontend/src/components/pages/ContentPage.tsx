@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/primitives';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/primitives';
+import { Label } from '@/components/ui/primitives';
 import { ContentPiece } from '@/data/mock';
 import { api } from '@/lib/api';
 
@@ -16,12 +18,38 @@ const statusColors: Record<string, string> = {
   REJECTED: 'bg-red-100 text-red-600',
 };
 
+const platformIcons: Record<string, string> = {
+  INSTAGRAM: '📷', FACEBOOK: '📘', TIKTOK: '🎵', LINKEDIN: '💼', X: '𝕏', THREADS: '🧵',
+};
+
+interface SocialAccount {
+  id: string;
+  platform: string;
+  accountName: string | null;
+  accountId: string | null;
+  isExpired: boolean;
+}
+
 export function ContentPage() {
   const [pieces, setPieces] = useState<ContentPiece[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Approve action
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  // Schedule modal
+  const [schedulingPiece, setSchedulingPiece] = useState<ContentPiece | null>(null);
+  const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
+  const [scheduleForm, setScheduleForm] = useState({
+    platform: '',
+    socialAccountId: '',
+    scheduledAt: '',
+  });
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState('');
 
   useEffect(() => {
     async function loadContent() {
@@ -33,16 +61,17 @@ export function ContentPage() {
             clientId: req.clientId,
             clientName: req.client?.name || 'Cliente',
             type: p.type || 'POST',
-            platform: 'INSTAGRAM',
+            platform: p.platform || 'INSTAGRAM',
             status: p.status || 'DRAFT',
             caption: p.caption || '',
             hook: p.hook || '',
             cta: p.cta || '',
             script: p.script || '',
             hashtags: p.hashtags || [],
-            generationCost: 0.003,
-            modelUsed: 'claude-3-5-sonnet',
+            generationCost: p.generationCost || 0,
+            modelUsed: p.modelUsed || '',
             createdAt: p.createdAt || new Date().toISOString(),
+            scheduledAt: p.scheduledAt || null,
           }))
         );
         setPieces(extractedPieces);
@@ -54,6 +83,75 @@ export function ContentPage() {
     }
     loadContent();
   }, []);
+
+  const handleApprove = async (pieceId: string) => {
+    setApprovingId(pieceId);
+    try {
+      await api(`/content/pieces/${pieceId}/approve`, { method: 'PATCH' });
+      setPieces(prev => prev.map(p => p.id === pieceId ? { ...p, status: 'APPROVED' } : p));
+    } catch (err) {
+      console.error('Approve failed:', err);
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const openScheduleModal = async (piece: ContentPiece) => {
+    setSchedulingPiece(piece);
+    setScheduleError('');
+    // Default datetime to tomorrow at 10:00
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(10, 0, 0, 0);
+    const isoLocal = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 16);
+    setScheduleForm({ platform: piece.platform || 'INSTAGRAM', socialAccountId: '', scheduledAt: isoLocal });
+
+    // Load social accounts for this client
+    try {
+      const accounts = await api(`/oauth/accounts?clientId=${piece.clientId}`);
+      setSocialAccounts(accounts || []);
+      if (accounts?.length === 1) {
+        setScheduleForm(f => ({ ...f, socialAccountId: accounts[0].id, platform: accounts[0].platform }));
+      }
+    } catch {
+      setSocialAccounts([]);
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!schedulingPiece || !scheduleForm.platform || !scheduleForm.scheduledAt) {
+      setScheduleError('Completá todos los campos requeridos');
+      return;
+    }
+    if (!scheduleForm.socialAccountId) {
+      setScheduleError('Seleccioná una cuenta de red social');
+      return;
+    }
+    setScheduling(true);
+    setScheduleError('');
+    try {
+      await api('/calendar/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          contentPieceId: schedulingPiece.id,
+          scheduledAt: new Date(scheduleForm.scheduledAt).toISOString(),
+          platform: scheduleForm.platform,
+          socialAccountId: scheduleForm.socialAccountId,
+        }),
+      });
+      setPieces(prev => prev.map(p =>
+        p.id === schedulingPiece.id
+          ? { ...p, status: 'SCHEDULED', scheduledAt: new Date(scheduleForm.scheduledAt).toISOString() }
+          : p
+      ));
+      setSchedulingPiece(null);
+    } catch (err: any) {
+      setScheduleError(err.message || 'Error al programar');
+    } finally {
+      setScheduling(false);
+    }
+  };
 
   const filtered = pieces.filter((p) => {
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
@@ -172,20 +270,37 @@ export function ContentPage() {
                     <span className="text-[10px] text-muted-foreground">${piece.generationCost.toFixed(4)}</span>
                   )}
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex items-center gap-1.5">
                   {piece.status === 'DRAFT' && (
                     <>
                       <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">Editar</Button>
-                      <Button size="sm" className="h-6 text-[10px] px-2 bg-emerald-500 text-white hover:bg-emerald-600">Aprobar</Button>
+                      <Button
+                        size="sm"
+                        className="h-6 text-[10px] px-2 bg-emerald-500 text-white hover:bg-emerald-600"
+                        disabled={approvingId === piece.id}
+                        onClick={() => handleApprove(piece.id)}
+                      >
+                        {approvingId === piece.id ? '...' : 'Aprobar'}
+                      </Button>
                     </>
                   )}
                   {piece.status === 'APPROVED' && (
-                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">Programar</Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-[10px] px-2 border-violet-300 text-violet-600 hover:bg-violet-50"
+                      onClick={() => openScheduleModal(piece)}
+                    >
+                      📅 Programar
+                    </Button>
                   )}
-                  {piece.scheduledAt && (
+                  {(piece.status === 'SCHEDULED' || piece.scheduledAt) && (
                     <span className="text-[10px] text-violet-600 font-medium">
-                      📅 {new Date(piece.scheduledAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      📅 {new Date(piece.scheduledAt!).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
+                  )}
+                  {piece.status === 'PUBLISHED' && (
+                    <span className="text-[10px] text-emerald-600 font-medium">✓ Publicado</span>
                   )}
                 </div>
               </div>
@@ -198,6 +313,128 @@ export function ContentPage() {
         <div className="text-center py-12">
           <p className="text-muted-foreground">No se encontraron piezas con esos filtros</p>
         </div>
+      )}
+
+      {/* ── Schedule Modal (portal) ── */}
+      {schedulingPiece && typeof window !== 'undefined' && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }}
+          onClick={() => setSchedulingPiece(null)}
+        >
+          <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+            <div
+              className="bg-background rounded-xl shadow-xl p-6 w-full max-w-md"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold">Programar publicación</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {schedulingPiece.clientName} · {schedulingPiece.type}
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {schedulingPiece.caption && (
+                  <div className="bg-muted/40 rounded-lg p-3">
+                    <p className="text-xs text-foreground/80 line-clamp-3">{schedulingPiece.caption}</p>
+                  </div>
+                )}
+
+                {/* Platform selector */}
+                <div>
+                  <Label className="text-xs">Plataforma *</Label>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    {['INSTAGRAM', 'FACEBOOK', 'LINKEDIN', 'X', 'TIKTOK', 'THREADS'].map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setScheduleForm(f => ({ ...f, platform: p, socialAccountId: '' }))}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-xs transition-all ${
+                          scheduleForm.platform === p
+                            ? 'border-violet-400 bg-violet-50 text-violet-700 font-medium'
+                            : 'border-border bg-background text-muted-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <span>{platformIcons[p]}</span>
+                        <span>{p}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Social account selector */}
+                <div>
+                  <Label className="text-xs">Cuenta conectada *</Label>
+                  {socialAccounts.filter(a => a.platform === scheduleForm.platform).length === 0 ? (
+                    <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-xs text-amber-700">
+                        No hay cuentas de {scheduleForm.platform} conectadas para este cliente.
+                      </p>
+                      <a
+                        href={`/api/v1/oauth/${scheduleForm.platform.toLowerCase()}/authorize?clientId=${schedulingPiece.clientId}`}
+                        className="text-xs text-violet-600 underline mt-1 inline-block"
+                      >
+                        Conectar ahora →
+                      </a>
+                    </div>
+                  ) : (
+                    <select
+                      className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                      value={scheduleForm.socialAccountId}
+                      onChange={e => setScheduleForm(f => ({ ...f, socialAccountId: e.target.value }))}
+                    >
+                      <option value="">Seleccioná una cuenta</option>
+                      {socialAccounts
+                        .filter(a => a.platform === scheduleForm.platform)
+                        .map(a => (
+                          <option key={a.id} value={a.id} disabled={a.isExpired}>
+                            {a.accountName || a.accountId || a.platform}
+                            {a.isExpired ? ' (token vencido)' : ''}
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                </div>
+
+                {/* Date/time picker */}
+                <div>
+                  <Label className="text-xs">Fecha y hora de publicación *</Label>
+                  <input
+                    type="datetime-local"
+                    className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                    value={scheduleForm.scheduledAt}
+                    min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+                    onChange={e => setScheduleForm(f => ({ ...f, scheduledAt: e.target.value }))}
+                  />
+                </div>
+
+                {scheduleError && (
+                  <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {scheduleError}
+                  </p>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-xs h-9"
+                    onClick={() => setSchedulingPiece(null)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    className="flex-1 text-xs h-9 bg-gradient-to-r from-violet-500 to-violet-600 text-white"
+                    onClick={handleSchedule}
+                    disabled={scheduling || !scheduleForm.socialAccountId || !scheduleForm.scheduledAt}
+                  >
+                    {scheduling ? 'Programando...' : '📅 Confirmar'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -17,6 +17,7 @@ interface GenerationContext {
   platform?: string;
   brandProfile: BrandProfile;
   index: number; // For variation
+  notebookContext?: string; // Brand Notebook content
 }
 
 @Injectable()
@@ -44,6 +45,10 @@ export class PromptBuilderService {
 
     if (ctx.brandProfile?.sampleContent) {
       parts.push(`Example of approved content style:\n"${ctx.brandProfile.sampleContent}"`);
+    }
+
+    if (ctx.notebookContext) {
+      parts.push(`\n--- Brand Knowledge Base ---\n${ctx.notebookContext}\n---`);
     }
 
     parts.push(

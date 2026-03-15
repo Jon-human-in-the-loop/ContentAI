@@ -50,6 +50,23 @@ const emptyForm: NewClientForm = {
   platforms: ['INSTAGRAM'],
 };
 
+interface NotebookEntry {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  updatedAt: string;
+}
+
+const NOTEBOOK_CATEGORIES = [
+  { value: 'brand_voice', label: 'Voz de marca' },
+  { value: 'audience', label: 'Audiencia' },
+  { value: 'competitors', label: 'Competencia' },
+  { value: 'guidelines', label: 'Guidelines' },
+  { value: 'reference', label: 'Referencia' },
+  { value: 'general', label: 'General' },
+];
+
 export function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -58,6 +75,13 @@ export function ClientsPage() {
   const [form, setForm] = useState<NewClientForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Notebook state
+  const [notebookEntries, setNotebookEntries] = useState<NotebookEntry[]>([]);
+  const [notebookLoading, setNotebookLoading] = useState(false);
+  const [showNotebookForm, setShowNotebookForm] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<string | null>(null);
+  const [entryForm, setEntryForm] = useState({ title: '', content: '', category: 'general' });
 
   useEffect(() => {
     async function loadClients() {
@@ -137,6 +161,65 @@ export function ClientsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Load notebook when a client is selected
+  useEffect(() => {
+    if (!selectedClient) {
+      setNotebookEntries([]);
+      return;
+    }
+    async function loadNotebook() {
+      setNotebookLoading(true);
+      try {
+        const data = await api(`/notebook/${selectedClient!.id}/entries`);
+        setNotebookEntries(data || []);
+      } catch (err) {
+        console.error('Failed to load notebook:', err);
+      } finally {
+        setNotebookLoading(false);
+      }
+    }
+    loadNotebook();
+  }, [selectedClient?.id]);
+
+  const handleSaveEntry = async () => {
+    if (!selectedClient || !entryForm.title.trim() || !entryForm.content.trim()) return;
+    try {
+      if (editingEntry) {
+        const updated = await api(`/notebook/entries/${editingEntry}`, {
+          method: 'PUT',
+          body: JSON.stringify(entryForm),
+        });
+        setNotebookEntries(prev => prev.map(e => e.id === editingEntry ? updated : e));
+      } else {
+        const created = await api(`/notebook/${selectedClient.id}/entries`, {
+          method: 'POST',
+          body: JSON.stringify(entryForm),
+        });
+        setNotebookEntries(prev => [created, ...prev]);
+      }
+      setEntryForm({ title: '', content: '', category: 'general' });
+      setShowNotebookForm(false);
+      setEditingEntry(null);
+    } catch (err) {
+      console.error('Failed to save notebook entry:', err);
+    }
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    try {
+      await api(`/notebook/entries/${entryId}`, { method: 'DELETE' });
+      setNotebookEntries(prev => prev.filter(e => e.id !== entryId));
+    } catch (err) {
+      console.error('Failed to delete entry:', err);
+    }
+  };
+
+  const startEditEntry = (entry: NotebookEntry) => {
+    setEntryForm({ title: entry.title, content: entry.content, category: entry.category });
+    setEditingEntry(entry.id);
+    setShowNotebookForm(true);
   };
 
   return (
@@ -455,6 +538,119 @@ export function ClientsPage() {
                   <span className="text-xs text-muted-foreground font-mono">{selectedClient.secondaryColor}</span>
                 </div>
               </div>
+            </div>
+
+            {/* ── Brand Notebook ── */}
+            <div className="mt-6 pt-6 border-t">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Brand Notebook</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Conocimiento de marca que la IA usa para generar contenido</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-7 border-dashed"
+                  onClick={() => { setShowNotebookForm(true); setEditingEntry(null); setEntryForm({ title: '', content: '', category: 'general' }); }}
+                >
+                  + Agregar nota
+                </Button>
+              </div>
+
+              {/* Entry form */}
+              {showNotebookForm && (
+                <div className="bg-muted/30 rounded-lg p-4 mb-4 space-y-3 border border-dashed border-violet-200">
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <Label className="text-xs">Título</Label>
+                      <Input
+                        placeholder="Ej: Pilares de contenido, Competencia directa..."
+                        className="mt-1"
+                        value={entryForm.title}
+                        onChange={e => setEntryForm(p => ({ ...p, title: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Categoría</Label>
+                      <select
+                        className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
+                        value={entryForm.category}
+                        onChange={e => setEntryForm(p => ({ ...p, category: e.target.value }))}
+                      >
+                        {NOTEBOOK_CATEGORIES.map(c => (
+                          <option key={c.value} value={c.value}>{c.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Contenido</Label>
+                    <Textarea
+                      placeholder="Escribí toda la información relevante sobre este aspecto de la marca. Cuanto más detalle, mejor contenido genera la IA."
+                      className="mt-1 min-h-[100px]"
+                      value={entryForm.content}
+                      onChange={e => setEntryForm(p => ({ ...p, content: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => { setShowNotebookForm(false); setEditingEntry(null); }}>
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="text-xs h-7 bg-violet-500 text-white hover:bg-violet-600"
+                      onClick={handleSaveEntry}
+                      disabled={!entryForm.title.trim() || !entryForm.content.trim()}
+                    >
+                      {editingEntry ? 'Guardar cambios' : 'Agregar'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Entries list */}
+              {notebookLoading ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Cargando notebook...</p>
+              ) : notebookEntries.length === 0 ? (
+                <div className="text-center py-8 bg-muted/20 rounded-lg">
+                  <p className="text-sm font-medium text-muted-foreground">Sin notas todavía</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Agregá información sobre la marca: voz, audiencia, competencia, guidelines, referencias de contenido...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {notebookEntries.map(entry => (
+                    <div key={entry.id} className="bg-background border rounded-lg p-3 group hover:border-violet-200 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-medium">{entry.title}</span>
+                            <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                              {NOTEBOOK_CATEGORIES.find(c => c.value === entry.category)?.label || entry.category}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{entry.content}</p>
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                          <button
+                            className="text-[10px] text-violet-500 hover:underline px-1"
+                            onClick={() => startEditEntry(entry)}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            className="text-[10px] text-red-400 hover:underline px-1"
+                            onClick={() => handleDeleteEntry(entry.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

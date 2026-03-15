@@ -33,6 +33,10 @@ export function GeneratePage() {
   const [expandedPiece, setExpandedPiece] = useState<string | null>(null);
   const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
   const [pieceImages, setPieceImages] = useState<Record<string, string>>({});
+  const [generatingPrompts, setGeneratingPrompts] = useState<Record<string, boolean>>({});
+  const [piecePrompts, setPiecePrompts] = useState<Record<string, string>>({});
+  const [generatingVideos, setGeneratingVideos] = useState<Record<string, boolean>>({});
+  const [videoJobs, setVideoJobs] = useState<Record<string, { id: string; status: string; videoUrl?: string }>>({});
 
   useEffect(() => {
     async function loadClients() {
@@ -68,18 +72,73 @@ export function GeneratePage() {
     }, 600);
   };
 
+  const handleGeneratePrompt = async (pieceId: string) => {
+    setGeneratingPrompts(prev => ({ ...prev, [pieceId]: true }));
+    try {
+      const data = await api(`/content/pieces/${pieceId}/image-prompt`, { method: 'POST' });
+      if (data?.success && data?.prompt) {
+        setPiecePrompts(prev => ({ ...prev, [pieceId]: data.prompt }));
+      }
+    } catch (err) {
+      console.error('Prompt generation failed:', err);
+    } finally {
+      setGeneratingPrompts(prev => ({ ...prev, [pieceId]: false }));
+    }
+  };
+
   const handleGenerateImage = async (pieceId: string) => {
     setGeneratingImages(prev => ({ ...prev, [pieceId]: true }));
     try {
-      const data = await api(`/content/pieces/${pieceId}/generate-image`, { method: 'POST' });
-      if (data?.success && data?.imageBase64) {
-        const dataUrl = `data:${data.mimeType};base64,${data.imageBase64}`;
-        setPieceImages(prev => ({ ...prev, [pieceId]: dataUrl }));
+      const prompt = piecePrompts[pieceId] || undefined;
+      const data = await api(`/content/pieces/${pieceId}/generate-image`, {
+        method: 'POST',
+        body: JSON.stringify({ prompt }),
+      });
+      if (data?.success) {
+        // Prefer persisted URL from S3, fall back to base64 data URL
+        const imageUrl = data.imageUrl || (data.imageBase64 ? `data:${data.mimeType};base64,${data.imageBase64}` : null);
+        if (imageUrl) {
+          setPieceImages(prev => ({ ...prev, [pieceId]: imageUrl }));
+        }
       }
     } catch (err) {
       console.error('Image generation failed:', err);
     } finally {
       setGeneratingImages(prev => ({ ...prev, [pieceId]: false }));
+    }
+  };
+
+  const handleGenerateVideo = async (pieceId: string) => {
+    setGeneratingVideos(prev => ({ ...prev, [pieceId]: true }));
+    try {
+      // For now, we use placeholder URLs — in production these would come from
+      // an uploaded avatar image and TTS audio generated from the script
+      const data = await api('/video/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          imageUrl: pieceImages[pieceId] || '',
+          audioUrl: '', // TODO: integrate TTS for audio from script
+          contentPieceId: pieceId,
+        }),
+      });
+      if (data?.success && data?.videoJobId) {
+        setVideoJobs(prev => ({ ...prev, [pieceId]: { id: data.videoJobId, status: 'processing' } }));
+        // Poll for status
+        const pollStatus = async () => {
+          const status = await api(`/video/jobs/${data.videoJobId}`);
+          if (status?.success) {
+            setVideoJobs(prev => ({ ...prev, [pieceId]: { id: data.videoJobId, status: status.status, videoUrl: status.videoUrl } }));
+            if (status.status !== 'done' && status.status !== 'failed') {
+              setTimeout(pollStatus, 5000);
+            }
+          }
+        };
+        setTimeout(pollStatus, 5000);
+      }
+    } catch (err) {
+      console.error('Video generation failed:', err);
+    } finally {
+      setGeneratingVideos(prev => ({ ...prev, [pieceId]: false }));
     }
   };
 
@@ -288,7 +347,7 @@ export function GeneratePage() {
                             )}
                             {/* Image generation — only for POST and CAROUSEL */}
                             {(piece.type === 'POST' || piece.type === 'CAROUSEL') && (
-                              <div className="pt-2">
+                              <div className="pt-2 space-y-2">
                                 {pieceImages[piece.id] ? (
                                   <div className="rounded-lg overflow-hidden border border-border/50">
                                     <img
@@ -300,26 +359,96 @@ export function GeneratePage() {
                                       <span className="text-[10px] text-muted-foreground">Imagen generada con Gemini</span>
                                       <button
                                         className="text-[10px] text-violet-500 hover:underline"
-                                        onClick={() => handleGenerateImage(piece.id)}
+                                        onClick={(e) => { e.stopPropagation(); handleGenerateImage(piece.id); }}
                                       >
                                         Regenerar
                                       </button>
                                     </div>
+                                  </div>
+                                ) : piecePrompts[piece.id] ? (
+                                  <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Prompt de imagen (editable)</span>
+                                      <button
+                                        className="text-[10px] text-violet-500 hover:underline"
+                                        onClick={() => handleGeneratePrompt(piece.id)}
+                                      >
+                                        Regenerar prompt
+                                      </button>
+                                    </div>
+                                    <Textarea
+                                      value={piecePrompts[piece.id]}
+                                      onChange={(e) => setPiecePrompts(prev => ({ ...prev, [piece.id]: e.target.value }))}
+                                      className="text-xs min-h-[80px] bg-muted/30 border-violet-200 focus:border-violet-400"
+                                    />
+                                    <Button
+                                      size="sm"
+                                      className="text-xs h-7 bg-gradient-to-r from-violet-500 to-emerald-500 text-white w-full"
+                                      onClick={() => handleGenerateImage(piece.id)}
+                                      disabled={generatingImages[piece.id]}
+                                    >
+                                      {generatingImages[piece.id] ? (
+                                        <span className="flex items-center gap-1.5">
+                                          <span className="animate-spin">✦</span> Generando imagen...
+                                        </span>
+                                      ) : (
+                                        '✦ Generar imagen con Gemini'
+                                      )}
+                                    </Button>
                                   </div>
                                 ) : (
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
-                                    onClick={() => handleGenerateImage(piece.id)}
-                                    disabled={generatingImages[piece.id]}
+                                    onClick={(e) => { e.stopPropagation(); handleGeneratePrompt(piece.id); }}
+                                    disabled={generatingPrompts[piece.id]}
                                   >
-                                    {generatingImages[piece.id] ? (
+                                    {generatingPrompts[piece.id] ? (
                                       <span className="flex items-center gap-1.5">
-                                        <span className="animate-spin">✦</span> Generando imagen...
+                                        <span className="animate-spin">✦</span> Creando prompt con IA...
                                       </span>
                                     ) : (
-                                      '✦ Generar imagen con Gemini'
+                                      '✦ Crear prompt de imagen'
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Video generation — for REEL and STORY */}
+                            {(piece.type === 'REEL' || piece.type === 'STORY') && (
+                              <div className="pt-2">
+                                {videoJobs[piece.id]?.videoUrl ? (
+                                  <div className="rounded-lg overflow-hidden border border-border/50">
+                                    <video
+                                      src={videoJobs[piece.id].videoUrl}
+                                      controls
+                                      className="w-full max-h-64"
+                                    />
+                                    <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
+                                      <span className="text-[10px] text-muted-foreground">Video generado con Creatify Aurora</span>
+                                    </div>
+                                  </div>
+                                ) : videoJobs[piece.id]?.status === 'processing' ? (
+                                  <div className="flex items-center gap-2 text-xs text-violet-600 bg-violet-50 rounded-lg p-2">
+                                    <span className="animate-spin">✦</span>
+                                    <span>Generando video con avatar...</span>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
+                                    onClick={(e) => { e.stopPropagation(); handleGenerateVideo(piece.id); }}
+                                    disabled={generatingVideos[piece.id]}
+                                  >
+                                    {generatingVideos[piece.id] ? (
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="animate-spin">✦</span> Iniciando...
+                                      </span>
+                                    ) : (
+                                      '▶ Generar video con avatar'
                                     )}
                                   </Button>
                                 )}

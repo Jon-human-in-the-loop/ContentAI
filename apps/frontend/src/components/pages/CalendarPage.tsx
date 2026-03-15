@@ -33,6 +33,7 @@ export function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
+  const [unschedulingId, setUnschedulingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadEvents() {
@@ -113,6 +114,25 @@ export function CalendarPage() {
   };
 
   const selectedEvents = selectedDay ? getEventsForDay(parseInt(selectedDay)) : [];
+
+  const handleUnschedule = async (pieceId: string) => {
+    setUnschedulingId(pieceId);
+    try {
+      await api(`/calendar/schedule/${pieceId}`, { method: 'DELETE' });
+      // Remove from local calendar state
+      setCalendarEvents(prev => {
+        const updated = { ...prev };
+        for (const dateStr of Object.keys(updated)) {
+          updated[dateStr] = updated[dateStr].filter(ev => ev.id !== pieceId);
+        }
+        return updated;
+      });
+    } catch (err) {
+      console.error('Failed to unschedule:', err);
+    } finally {
+      setUnschedulingId(null);
+    }
+  };
 
   const isViewingCurrentMonth = viewYear === todayYear && viewMonth === todayMonth;
 
@@ -224,7 +244,17 @@ export function CalendarPage() {
                       <p className="text-xs text-muted-foreground line-clamp-2">{ev.caption}</p>
                       <div className="flex gap-2 mt-2">
                         <Button size="sm" variant="outline" className="h-6 text-[10px]">Ver detalle</Button>
-                        <Button size="sm" variant="outline" className="h-6 text-[10px] text-red-500 border-red-200">Desprogramar</Button>
+                        {ev.status === 'SCHEDULED' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-[10px] text-red-500 border-red-200 hover:bg-red-50"
+                            disabled={unschedulingId === ev.id}
+                            onClick={() => handleUnschedule(ev.id)}
+                          >
+                            {unschedulingId === ev.id ? '...' : 'Desprogramar'}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>

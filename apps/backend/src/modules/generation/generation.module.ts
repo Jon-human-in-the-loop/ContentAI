@@ -5,10 +5,12 @@ import { AiRouterService } from './ai-router.service';
 import { AiCacheService } from './ai-cache.service';
 import { PromptBuilderService } from './prompt-builder.service';
 import { CostTrackerService } from './cost-tracker.service';
+import { NotebookModule } from '../notebook/notebook.module';
 import { QUEUES } from '../../common/constants';
 
 @Module({
   imports: [
+    NotebookModule,
     BullModule.registerQueue(
       { name: QUEUES.CONTENT_GENERATE },
       { name: QUEUES.CONTENT_HASHTAGS },
