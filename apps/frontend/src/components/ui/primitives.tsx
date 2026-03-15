@@ -81,14 +81,12 @@ export function DialogContent({ children, className }: { children: React.ReactNo
   const ctx = React.useContext(DlgCtx);
   if (!ctx.open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 overflow-y-auto" onClick={() => ctx.setOpen(false)}>
-      <div className="min-h-full flex items-center justify-center p-4 sm:p-6">
-        <div
-          className={cn("bg-background rounded-xl shadow-xl p-6 w-full max-w-lg animate-in my-4", className)}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {children}
-        </div>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 sm:p-6" onClick={() => ctx.setOpen(false)}>
+      <div
+        className={cn("bg-background rounded-xl shadow-xl p-6 w-full max-w-lg max-h-[88vh] overflow-y-auto animate-in", className)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
       </div>
     </div>
   );
