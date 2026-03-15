@@ -7,19 +7,18 @@ import {
   Param,
   Body,
   Query,
-  UseGuards,
   Request,
 } from '@nestjs/common';
 import { ContentService } from './content.service';
+import { GeminiImageService } from '../generation/gemini-image.service';
 import { CreateContentRequestDto, UpdateContentPieceDto } from './dto/content.dto';
-// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-// import { RolesGuard } from '../../common/guards/roles.guard';
-// import { Roles } from '../../common/decorators/roles.decorator';
 
 @Controller('content')
-// @UseGuards(JwtAuthGuard, RolesGuard)
 export class ContentController {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    private readonly contentService: ContentService,
+    private readonly geminiImage: GeminiImageService,
+  ) {}
 
   /**
    * POST /api/v1/content/requests
@@ -82,9 +81,42 @@ export class ContentController {
    * PATCH /api/v1/content/pieces/:id/reject
    */
   @Patch('pieces/:id/reject')
-  // @Roles('OWNER', 'ADMIN')
   async rejectPiece(@Request() req, @Param('id') id: string) {
     const orgId = req.user?.orgId || 'demo-org';
     return this.contentService.rejectPiece(orgId, id);
+  }
+
+  /**
+   * POST /api/v1/content/pieces/:id/generate-image
+   * Generate an AI image for a content piece using Gemini
+   */
+  @Post('pieces/:id/generate-image')
+  async generateImage(@Request() req, @Param('id') id: string) {
+    const orgId = req.user?.orgId || 'demo-org';
+
+    const piece = await this.contentService.getPiece(orgId, id);
+
+    const prompt = this.geminiImage.buildImagePrompt({
+      brief: piece.request?.brief || '',
+      clientName: piece.client?.name || 'Brand',
+      industry: (piece.client as any)?.industry || '',
+      toneOfVoice: piece.client?.branding?.toneOfVoice || undefined,
+      primaryColor: piece.client?.branding?.primaryColor || undefined,
+      contentType: piece.type,
+      caption: piece.caption || undefined,
+    });
+
+    const image = await this.geminiImage.generateImage(prompt);
+
+    if (!image) {
+      return { success: false, message: 'Image generation failed or GEMINI_API_KEY not configured' };
+    }
+
+    return {
+      success: true,
+      imageBase64: image.base64,
+      mimeType: image.mimeType,
+      prompt: image.prompt,
+    };
   }
 }
