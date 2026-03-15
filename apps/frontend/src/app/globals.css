@@ -24,5 +24,5 @@
   .sidebar-gradient { background: linear-gradient(180deg, hsl(220 20% 10%) 0%, hsl(252 30% 16%) 100%); }
   .stat-glow { box-shadow: 0 0 40px -12px hsla(252, 68%, 52%, 0.15); }
   .animate-in { animation: fadeSlideIn 0.4s ease-out forwards; }
-  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 }
