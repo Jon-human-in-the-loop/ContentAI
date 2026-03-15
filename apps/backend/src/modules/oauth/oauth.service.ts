@@ -223,6 +223,25 @@ export class OAuthService {
   }
 
   /**
+   * Get connected social accounts for a client (org-scoped)
+   */
+  async getConnectedAccounts(orgId: string, clientId: string) {
+    // Verify client belongs to org
+    const client = await this.prisma.client.findFirst({ where: { id: clientId, orgId } });
+    if (!client) return [];
+
+    const accounts = await this.prisma.clientSocialAccount.findMany({
+      where: { clientId },
+      select: { id: true, platform: true, accountId: true, accountName: true, connectedAt: true, tokenExpiresAt: true },
+    });
+
+    return accounts.map((a) => ({
+      ...a,
+      isExpired: a.tokenExpiresAt ? a.tokenExpiresAt < new Date() : false,
+    }));
+  }
+
+  /**
    * Disconnect a platform (delete tokens)
    */
   async disconnectPlatform(accountId: string): Promise<void> {
