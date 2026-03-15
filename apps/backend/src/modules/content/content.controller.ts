@@ -12,6 +12,7 @@ import {
 import { ContentService } from './content.service';
 import { GeminiImageService } from '../generation/gemini-image.service';
 import { AiRouterService } from '../generation/ai-router.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateContentRequestDto, UpdateContentPieceDto } from './dto/content.dto';
 
 @Controller('content')
@@ -20,6 +21,7 @@ export class ContentController {
     private readonly contentService: ContentService,
     private readonly geminiImage: GeminiImageService,
     private readonly aiRouter: AiRouterService,
+    private readonly storageService: StorageService,
   ) {}
 
   /**
@@ -185,11 +187,33 @@ Write the perfect image generation prompt:`;
       return { success: false, message: 'Image generation failed or GEMINI_API_KEY not configured' };
     }
 
+    // Persist to S3 if configured
+    const stored = await this.storageService.uploadBase64({
+      orgId,
+      clientId: piece.clientId,
+      contentPieceId: id,
+      base64: image.base64,
+      mimeType: image.mimeType,
+      source: 'gemini',
+      metadata: { prompt },
+    });
+
     return {
       success: true,
       imageBase64: image.base64,
       mimeType: image.mimeType,
       prompt: image.prompt,
+      ...(stored ? { assetId: stored.id, imageUrl: stored.url } : {}),
     };
+  }
+
+  /**
+   * GET /api/v1/content/pieces/:id/media
+   * Get all media assets for a content piece
+   */
+  @Get('pieces/:id/media')
+  async getPieceMedia(@Request() req, @Param('id') id: string) {
+    const orgId = req.user?.orgId || 'demo-org';
+    return this.storageService.getAssetsForPiece(orgId, id);
   }
 }

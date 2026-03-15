@@ -237,6 +237,7 @@ model ContentPiece {
   versions     ContentPiece[] @relation("ContentVersions")
   publishQueue PublishQueue[]
   apiUsageLogs ApiUsageLog[]
+  mediaAssets  MediaAsset[]
 
   @@map("content_pieces")
 }
@@ -312,6 +313,31 @@ model OrgApiKey {
 
   @@unique([orgId, provider])
   @@map("org_api_keys")
+}
+
+// ============================================
+// MEDIA STORAGE
+// ============================================
+
+model MediaAsset {
+  id            String   @id @default(uuid()) @db.Uuid
+  orgId         String   @map("org_id") @db.Uuid
+  clientId      String?  @map("client_id") @db.Uuid
+  contentPieceId String? @map("content_piece_id") @db.Uuid
+  fileName      String   @map("file_name") @db.VarChar(255)
+  mimeType      String   @map("mime_type") @db.VarChar(100)
+  sizeBytes     Int      @map("size_bytes")
+  s3Key         String   @map("s3_key") @db.VarChar(500)
+  url           String?  @db.VarChar(1000)
+  source        String   @default("upload") @db.VarChar(50) // "upload", "gemini", "creatify"
+  metadata      Json?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  contentPiece ContentPiece? @relation(fields: [contentPieceId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, clientId])
+  @@index([contentPieceId])
+  @@map("media_assets")
 }
 
 // ============================================

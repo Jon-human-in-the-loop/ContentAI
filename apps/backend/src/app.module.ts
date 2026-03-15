@@ -15,6 +15,7 @@ import { RedisModule } from './config/redis.module';
 import { EncryptionModule } from './common/encryption.module';
 import { OAuthModule } from './modules/oauth/oauth.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { StorageModule } from './modules/storage/storage.module';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     PrismaModule, RedisModule, EncryptionModule,
     AuthModule, ClientsModule, ContentModule, GenerationModule,
     TemplatesModule, CalendarModule, PublishingModule, AnalyticsModule,
-    OAuthModule, SettingsModule,
+    OAuthModule, SettingsModule, StorageModule,
   ],
 })
 export class AppModule {}

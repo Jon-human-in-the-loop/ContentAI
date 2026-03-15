@@ -92,9 +92,12 @@ export function GeneratePage() {
         method: 'POST',
         body: JSON.stringify({ prompt }),
       });
-      if (data?.success && data?.imageBase64) {
-        const dataUrl = `data:${data.mimeType};base64,${data.imageBase64}`;
-        setPieceImages(prev => ({ ...prev, [pieceId]: dataUrl }));
+      if (data?.success) {
+        // Prefer persisted URL from S3, fall back to base64 data URL
+        const imageUrl = data.imageUrl || (data.imageBase64 ? `data:${data.mimeType};base64,${data.imageBase64}` : null);
+        if (imageUrl) {
+          setPieceImages(prev => ({ ...prev, [pieceId]: imageUrl }));
+        }
       }
     } catch (err) {
       console.error('Image generation failed:', err);
