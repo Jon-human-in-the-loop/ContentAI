@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 export function Badge({ className, variant = "default", ...props }: React.HTMLAttributes<HTMLDivElement> & { variant?: string }) {
@@ -79,19 +80,33 @@ export function DialogTrigger({ children, asChild }: { children: React.ReactNode
 }
 export function DialogContent({ children, className }: { children: React.ReactNode; className?: string }) {
   const ctx = React.useContext(DlgCtx);
-  if (!ctx.open) return null;
-  return (
-    {/* Overlay scrolls. Inner wrapper centers when there's space, scrolls from top when content overflows */}
-    <div className="fixed inset-0 z-50 bg-black/50 overflow-y-auto" onClick={() => ctx.setOpen(false)}>
-      <div className="flex min-h-full items-center justify-center p-4 sm:p-8">
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!ctx.open || !mounted) return null;
+
+  // createPortal renders directly into document.body, completely escaping any
+  // parent CSS transform (e.g. animate-in) that would break position:fixed
+  return createPortal(
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }}
+      onClick={() => ctx.setOpen(false)}
+    >
+      <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
         <div
-          className={cn("bg-background rounded-xl shadow-xl p-6 w-full max-w-lg animate-in", className)}
+          className={cn("bg-background rounded-xl shadow-xl p-6 w-full max-w-2xl", className)}
+          style={{ position: 'relative', margin: 'auto' }}
           onClick={(e) => e.stopPropagation()}
         >
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 export function DialogHeader({ children }: { children: React.ReactNode }) { return <div className="mb-4">{children}</div>; }
