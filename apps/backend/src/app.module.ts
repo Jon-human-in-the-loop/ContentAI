@@ -17,6 +17,7 @@ import { OAuthModule } from './modules/oauth/oauth.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { NotebookModule } from './modules/notebook/notebook.module';
+import { VideoModule } from './modules/video/video.module';
 
 @Module({
   imports: [
@@ -33,7 +34,7 @@ import { NotebookModule } from './modules/notebook/notebook.module';
     PrismaModule, RedisModule, EncryptionModule,
     AuthModule, ClientsModule, ContentModule, GenerationModule,
     TemplatesModule, CalendarModule, PublishingModule, AnalyticsModule,
-    OAuthModule, SettingsModule, StorageModule, NotebookModule,
+    OAuthModule, SettingsModule, StorageModule, NotebookModule, VideoModule,
   ],
 })
 export class AppModule {}
