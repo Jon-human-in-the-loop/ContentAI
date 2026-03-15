@@ -31,6 +31,8 @@ export function GeneratePage() {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ContentPiece[]>([]);
   const [expandedPiece, setExpandedPiece] = useState<string | null>(null);
+  const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
+  const [pieceImages, setPieceImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function loadClients() {
@@ -64,6 +66,21 @@ export function GeneratePage() {
         return p + Math.random() * 15 + 5;
       });
     }, 600);
+  };
+
+  const handleGenerateImage = async (pieceId: string) => {
+    setGeneratingImages(prev => ({ ...prev, [pieceId]: true }));
+    try {
+      const data = await api(`/content/pieces/${pieceId}/generate-image`, { method: 'POST' });
+      if (data?.success && data?.imageBase64) {
+        const dataUrl = `data:${data.mimeType};base64,${data.imageBase64}`;
+        setPieceImages(prev => ({ ...prev, [pieceId]: dataUrl }));
+      }
+    } catch (err) {
+      console.error('Image generation failed:', err);
+    } finally {
+      setGeneratingImages(prev => ({ ...prev, [pieceId]: false }));
+    }
   };
 
   const client = clients.find((c) => c.id === selectedClient);
@@ -121,7 +138,7 @@ export function GeneratePage() {
                     <span className="text-sm font-medium">Posts</span>
                   </div>
                   <div className="flex items-center gap-3 w-40">
-                    <Slider value={posts} onValueChange={setPosts} max={10} step={1} className="flex-1" />
+                    <Slider value={posts} onValueChange={setPosts} max={30} step={1} className="flex-1" />
                     <span className="text-sm font-bold w-6 text-right">{posts[0]}</span>
                   </div>
                 </div>
@@ -132,7 +149,7 @@ export function GeneratePage() {
                     <span className="text-sm font-medium">Reels</span>
                   </div>
                   <div className="flex items-center gap-3 w-40">
-                    <Slider value={reels} onValueChange={setReels} max={5} step={1} className="flex-1" />
+                    <Slider value={reels} onValueChange={setReels} max={20} step={1} className="flex-1" />
                     <span className="text-sm font-bold w-6 text-right">{reels[0]}</span>
                   </div>
                 </div>
@@ -143,7 +160,7 @@ export function GeneratePage() {
                     <span className="text-sm font-medium">Stories</span>
                   </div>
                   <div className="flex items-center gap-3 w-40">
-                    <Slider value={stories} onValueChange={setStories} max={10} step={1} className="flex-1" />
+                    <Slider value={stories} onValueChange={setStories} max={30} step={1} className="flex-1" />
                     <span className="text-sm font-bold w-6 text-right">{stories[0]}</span>
                   </div>
                 </div>
@@ -269,6 +286,46 @@ export function GeneratePage() {
                                 ))}
                               </div>
                             )}
+                            {/* Image generation — only for POST and CAROUSEL */}
+                            {(piece.type === 'POST' || piece.type === 'CAROUSEL') && (
+                              <div className="pt-2">
+                                {pieceImages[piece.id] ? (
+                                  <div className="rounded-lg overflow-hidden border border-border/50">
+                                    <img
+                                      src={pieceImages[piece.id]}
+                                      alt="Imagen generada con IA"
+                                      className="w-full object-cover max-h-64"
+                                    />
+                                    <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
+                                      <span className="text-[10px] text-muted-foreground">Imagen generada con Gemini</span>
+                                      <button
+                                        className="text-[10px] text-violet-500 hover:underline"
+                                        onClick={() => handleGenerateImage(piece.id)}
+                                      >
+                                        Regenerar
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
+                                    onClick={() => handleGenerateImage(piece.id)}
+                                    disabled={generatingImages[piece.id]}
+                                  >
+                                    {generatingImages[piece.id] ? (
+                                      <span className="flex items-center gap-1.5">
+                                        <span className="animate-spin">✦</span> Generando imagen...
+                                      </span>
+                                    ) : (
+                                      '✦ Generar imagen con Gemini'
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+
                             <div className="flex items-center gap-4 pt-2">
                               <span className="text-[10px] text-muted-foreground">Generado con IA</span>
                             </div>
