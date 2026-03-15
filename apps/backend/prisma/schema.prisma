@@ -74,14 +74,31 @@ model Client {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  organization    Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
-  branding        ClientBranding?
-  socialAccounts  ClientSocialAccount[]
-  templates       Template[]
-  contentRequests ContentRequest[]
-  contentPieces   ContentPiece[]
+  organization     Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  branding         ClientBranding?
+  notebookEntries  BrandNotebookEntry[]
+  socialAccounts   ClientSocialAccount[]
+  templates        Template[]
+  contentRequests  ContentRequest[]
+  contentPieces    ContentPiece[]
 
   @@map("clients")
+}
+
+model BrandNotebookEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  clientId  String   @map("client_id") @db.Uuid
+  orgId     String   @map("org_id") @db.Uuid
+  title     String   @db.VarChar(255)
+  content   String   @db.Text
+  category  String   @default("general") @db.VarChar(50) // "brand_voice", "audience", "competitors", "guidelines", "reference", "general"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, category])
+  @@map("brand_notebook_entries")
 }
 
 model ClientBranding {

@@ -16,6 +16,7 @@ import { EncryptionModule } from './common/encryption.module';
 import { OAuthModule } from './modules/oauth/oauth.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { NotebookModule } from './modules/notebook/notebook.module';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { StorageModule } from './modules/storage/storage.module';
     PrismaModule, RedisModule, EncryptionModule,
     AuthModule, ClientsModule, ContentModule, GenerationModule,
     TemplatesModule, CalendarModule, PublishingModule, AnalyticsModule,
-    OAuthModule, SettingsModule, StorageModule,
+    OAuthModule, SettingsModule, StorageModule, NotebookModule,
   ],
 })
 export class AppModule {}

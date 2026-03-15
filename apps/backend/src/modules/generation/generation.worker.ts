@@ -6,6 +6,7 @@ import { AiRouterService } from './ai-router.service';
 import { AiCacheService } from './ai-cache.service';
 import { PromptBuilderService } from './prompt-builder.service';
 import { CostTrackerService } from './cost-tracker.service';
+import { NotebookService } from '../notebook/notebook.service';
 import { QUEUES } from '../../common/constants';
 
 interface GenerationJobData {
@@ -34,6 +35,7 @@ export class GenerationWorker extends WorkerHost {
     private cache: AiCacheService,
     private promptBuilder: PromptBuilderService,
     private costTracker: CostTrackerService,
+    private notebookService: NotebookService,
   ) {
     super();
   }
@@ -57,7 +59,8 @@ export class GenerationWorker extends WorkerHost {
         },
       });
 
-      // 2. Build generation context
+      // 2. Build generation context (including brand notebook)
+      const notebookContext = await this.notebookService.buildContext(data.clientId);
       const context = {
         clientName: data.clientName,
         industry: data.industry,
@@ -66,6 +69,7 @@ export class GenerationWorker extends WorkerHost {
         platform: data.platforms?.[0],
         brandProfile: data.brandProfile || {},
         index: data.index,
+        notebookContext,
       };
 
       // 3. Check cache
