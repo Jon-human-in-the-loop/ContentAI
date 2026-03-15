@@ -23,7 +23,13 @@ const typeColors: Record<string, string> = {
 };
 
 export function CalendarPage() {
-  const [currentDate] = useState(new Date()); 
+  const now = new Date();
+  const todayDay = now.getDate();
+  const todayMonth = now.getMonth();
+  const todayYear = now.getFullYear();
+
+  const [viewYear, setViewYear] = useState(todayYear);
+  const [viewMonth, setViewMonth] = useState(todayMonth);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [calendarEvents, setCalendarEvents] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -33,14 +39,14 @@ export function CalendarPage() {
       try {
         const data = await api('/content/requests');
         const eventsObj: Record<string, any[]> = {};
-        
+
         (data || []).forEach((req: any) => {
           (req.pieces || []).forEach((p: any) => {
             const pieceDate = p.scheduledAt ? new Date(p.scheduledAt) : new Date(p.createdAt);
             const dateStr = pieceDate.toISOString().split('T')[0];
-            
+
             if (!eventsObj[dateStr]) eventsObj[dateStr] = [];
-            
+
             eventsObj[dateStr].push({
               id: p.id,
               clientName: req.client?.name || 'Cliente',
@@ -51,7 +57,7 @@ export function CalendarPage() {
             });
           });
         });
-        
+
         setCalendarEvents(eventsObj);
       } catch (err) {
         console.error('Failed to load events:', err);
@@ -62,12 +68,36 @@ export function CalendarPage() {
     loadEvents();
   }, []);
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay = getFirstDayOfMonth(year, month);
+  const daysInMonth = getDaysInMonth(viewYear, viewMonth);
+  const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
 
-  const monthName = currentDate.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  const monthName = new Date(viewYear, viewMonth).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+
+  const goToPrevMonth = () => {
+    if (viewMonth === 0) {
+      setViewMonth(11);
+      setViewYear(viewYear - 1);
+    } else {
+      setViewMonth(viewMonth - 1);
+    }
+    setSelectedDay(null);
+  };
+
+  const goToNextMonth = () => {
+    if (viewMonth === 11) {
+      setViewMonth(0);
+      setViewYear(viewYear + 1);
+    } else {
+      setViewMonth(viewMonth + 1);
+    }
+    setSelectedDay(null);
+  };
+
+  const goToToday = () => {
+    setViewYear(todayYear);
+    setViewMonth(todayMonth);
+    setSelectedDay(null);
+  };
 
   // Build calendar grid
   const cells: (number | null)[] = [];
@@ -77,12 +107,14 @@ export function CalendarPage() {
 
   const getEventsForDay = (day: number): any[] => {
     const dayStr = day.toString().padStart(2, '0');
-    const monthStr = (month + 1).toString().padStart(2, '0');
-    const dateStr = `${year}-${monthStr}-${dayStr}`;
+    const monthStr = (viewMonth + 1).toString().padStart(2, '0');
+    const dateStr = `${viewYear}-${monthStr}-${dayStr}`;
     return calendarEvents[dateStr] || [];
   };
 
   const selectedEvents = selectedDay ? getEventsForDay(parseInt(selectedDay)) : [];
+
+  const isViewingCurrentMonth = viewYear === todayYear && viewMonth === todayMonth;
 
   return (
     <div className="space-y-6 animate-in">
@@ -103,6 +135,24 @@ export function CalendarPage() {
         </div>
       </div>
 
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={goToPrevMonth} className="h-8 w-8 p-0">
+            ←
+          </Button>
+          <h2 className="text-lg font-semibold capitalize min-w-[180px] text-center">{monthName}</h2>
+          <Button variant="outline" size="sm" onClick={goToNextMonth} className="h-8 w-8 p-0">
+            →
+          </Button>
+        </div>
+        {!isViewingCurrentMonth && (
+          <Button variant="outline" size="sm" onClick={goToToday} className="text-xs">
+            Hoy
+          </Button>
+        )}
+      </div>
+
       <div className="grid grid-cols-7 gap-0">
         {/* Header */}
         {DAYS.map((d) => (
@@ -118,9 +168,8 @@ export function CalendarPage() {
           }
 
           const events = getEventsForDay(day);
-          const isToday = day === 9;
+          const isToday = isViewingCurrentMonth && day === todayDay;
           const isSelected = selectedDay === day.toString();
-          const hasEvents = events.length > 0;
 
           return (
             <div
