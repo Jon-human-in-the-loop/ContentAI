@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ContentController } from './content.controller';
 import { ContentService } from './content.service';
 import { GeminiImageService } from '../generation/gemini-image.service';
+import { AiRouterService } from '../generation/ai-router.service';
 import { QUEUES } from '../../common/constants';
 
 @Module({
@@ -10,7 +11,7 @@ import { QUEUES } from '../../common/constants';
     BullModule.registerQueue({ name: QUEUES.CONTENT_GENERATE }),
   ],
   controllers: [ContentController],
-  providers: [ContentService, GeminiImageService],
+  providers: [ContentService, GeminiImageService, AiRouterService],
   exports: [ContentService],
 })
 export class ContentModule {}
