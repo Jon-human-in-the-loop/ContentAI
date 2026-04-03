@@ -45,25 +45,20 @@ import { AdminModule } from './modules/admin/admin.module';
       useFactory: (config: ConfigService) => {
         const url = config.get('REDIS_URL');
         if (url) {
-          try {
-            const redisUrl = new URL(url);
-            return {
-              connection: {
-                host: redisUrl.hostname,
-                port: parseInt(redisUrl.port, 10) || 6379,
-                username: redisUrl.username || undefined,
-                password: redisUrl.password || undefined,
-                tls: url.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
-              }
-            };
-          } catch (e) {
-            console.error('Failed to parse REDIS_URL', e);
-          }
+          // BullMQ requiere maxRetriesPerRequest: null
+          // Generamos la conexión ioredis directamente para que su parser nativo analice la URL (Railway)
+          // sin causar fallos de autenticación con 'default'
+          const IORedis = require('ioredis').default || require('ioredis');
+          return {
+            connection: new IORedis(url, { maxRetriesPerRequest: null }),
+          };
         }
         return {
           connection: {
             host: config.get('REDIS_HOST', 'localhost'),
             port: parseInt(config.get('REDIS_PORT', '6379')),
+            password: config.get('REDIS_PASSWORD'),
+            maxRetriesPerRequest: null,
           },
         };
       },
