@@ -44,7 +44,22 @@ import { AdminModule } from './modules/admin/admin.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const url = config.get('REDIS_URL');
-        if (url) return { connection: { url } } as any;
+        if (url) {
+          try {
+            const redisUrl = new URL(url);
+            return {
+              connection: {
+                host: redisUrl.hostname,
+                port: parseInt(redisUrl.port, 10) || 6379,
+                username: redisUrl.username || undefined,
+                password: redisUrl.password || undefined,
+                tls: url.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+              }
+            };
+          } catch (e) {
+            console.error('Failed to parse REDIS_URL', e);
+          }
+        }
         return {
           connection: {
             host: config.get('REDIS_HOST', 'localhost'),

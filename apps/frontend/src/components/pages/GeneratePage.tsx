@@ -250,8 +250,25 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
 
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
-                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">✦ Método C.O.P.</span>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
+                    <button 
+                      onClick={() => {
+                        const ideas = [
+                          "[Contexto] Desmiente el mito más grande del sector y muestra cómo tu servicio lo resuelve de raíz. [Objetivo] Generar confianza y debate. [Particularidad] Invita a dejar su opinión en los comentarios.",
+                          "[Contexto] Cuenta el 'antes y después' de un cliente que logró resultados increíbles. [Objetivo] Vender autoridad técnica. [Particularidad] Usa números duros (% de mejora o tiempo ahorrado) y un CTA para agendar llamada.",
+                          "[Contexto] Describe 3 errores gravísimos que la audiencia hace a diario sin darse cuenta y dales la solución. [Objetivo] Educar y aportar valor. [Particularidad] Cierra enviándolos al link en bio para la guía completa.",
+                          "[Contexto] Rebate la típica objeción del cliente ideal: 'esto es muy caro' o 'no tengo tiempo'. [Objetivo] Demostrar Retorno de Inversión (ROI). [Particularidad] El CTA pide que comenten la palabra INFO para recibir un DM con detalles.",
+                          "[Contexto] Resalta la oportunidad de temporada o promoción de cierre de mes. [Objetivo] Generar urgencia y ventas inmediatas. [Particularidad] Destaca que hay cupos limitados y el beneficio central del servicio."
+                        ];
+                        setBrief(ideas[Math.floor(Math.random() * ideas.length)]);
+                      }}
+                      className="text-[10px] text-violet-600 font-medium hover:text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      🪄 Dame una idea (Generador)
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ Método C.O.P.</span>
                 </div>
                 <Textarea
                   value={brief}
