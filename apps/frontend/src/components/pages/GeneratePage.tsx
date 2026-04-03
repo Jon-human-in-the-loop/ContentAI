@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/primitives';
 import { Textarea } from '@/components/ui/primitives';
 import { Label } from '@/components/ui/primitives';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/primitives';
 import { Slider } from '@/components/ui/primitives';
 import { Progress } from '@/components/ui/primitives';
-import { mockPieces, ContentPiece } from '@/data/mock';
 import { api } from '@/lib/api';
 
 const statusColors: Record<string, string> = {
@@ -20,6 +18,13 @@ const statusColors: Record<string, string> = {
   REJECTED: 'bg-red-100 text-red-600',
 };
 
+const typeIcon: Record<string, string> = {
+  POST: '▦',
+  REEL: '▶',
+  STORY: '◯',
+  CAROUSEL: '▦▦',
+};
+
 export function GeneratePage() {
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState('');
@@ -29,47 +34,120 @@ export function GeneratePage() {
   const [stories, setStories] = useState([2]);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [results, setResults] = useState<ContentPiece[]>([]);
+  const [progressLabel, setProgressLabel] = useState('');
+  const [results, setResults] = useState<any[]>([]);
   const [expandedPiece, setExpandedPiece] = useState<string | null>(null);
+  const [piecesCache, setPiecesCache] = useState<Record<string, any>>({});
   const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
   const [pieceImages, setPieceImages] = useState<Record<string, string>>({});
   const [generatingPrompts, setGeneratingPrompts] = useState<Record<string, boolean>>({});
   const [piecePrompts, setPiecePrompts] = useState<Record<string, string>>({});
   const [generatingVideos, setGeneratingVideos] = useState<Record<string, boolean>>({});
   const [videoJobs, setVideoJobs] = useState<Record<string, { id: string; status: string; videoUrl?: string }>>({});
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    async function loadClients() {
-      try {
-        const data = await api('/clients');
-        setClients(data || []);
-      } catch (err) {
-        console.error('Failed to load clients', err);
-      }
-    }
-    loadClients();
+    api('/clients')
+      .then(data => setClients(data || []))
+      .catch(() => {});
+    return () => { if (pollRef.current) clearTimeout(pollRef.current); };
   }, []);
 
   const totalPieces = posts[0] + reels[0] + stories[0];
+  const client = clients.find((c) => c.id === selectedClient);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedClient || !brief.trim()) return;
     setGenerating(true);
-    setProgress(0);
+    setProgress(5);
+    setProgressLabel('Enviando solicitud...');
     setResults([]);
+    setError(null);
+    if (pollRef.current) clearTimeout(pollRef.current);
 
-    // Simulate generation progress
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setGenerating(false);
-          setResults(mockPieces.slice(0, totalPieces));
-          return 100;
-        }
-        return p + Math.random() * 15 + 5;
+    let requestId: string;
+    try {
+      const response = await api('/content/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientId: selectedClient,
+          brief,
+          contentTypes: {
+            ...(posts[0] > 0 ? { POST: posts[0] } : {}),
+            ...(reels[0] > 0 ? { REEL: reels[0] } : {}),
+            ...(stories[0] > 0 ? { STORY: stories[0] } : {}),
+          },
+        }),
       });
-    }, 600);
+      requestId = response.id;
+      setProgressLabel('Generando con IA...');
+      setProgress(15);
+    } catch (err: any) {
+      setError(err?.message || 'Error al crear la solicitud');
+      setGenerating(false);
+      return;
+    }
+
+    // Poll until all pieces are no longer in GENERATING state
+    let attempts = 0;
+    const maxAttempts = 72; // 6 min max at 5s intervals
+
+    const poll = async () => {
+      try {
+        const requests = await api('/content/requests');
+        const req = (requests || []).find((r: any) => r.id === requestId);
+
+        if (req) {
+          const pieces = req.pieces || [];
+          const done = pieces.filter((p: any) => p.status !== 'GENERATING');
+          const pct = totalPieces > 0 ? 15 + (done.length / totalPieces) * 80 : 15;
+          setProgress(Math.min(pct, 95));
+          setProgressLabel(`${done.length}/${totalPieces} piezas listas...`);
+
+          const allDone = pieces.length >= totalPieces && done.length === pieces.length;
+          if (allDone || attempts >= maxAttempts) {
+            setResults(pieces);
+            setProgress(100);
+            setProgressLabel('¡Listo!');
+            setGenerating(false);
+            return;
+          }
+        }
+      } catch {
+        // transient error, keep polling
+      }
+
+      attempts++;
+      pollRef.current = setTimeout(poll, 5000);
+    };
+
+    pollRef.current = setTimeout(poll, 4000);
+  };
+
+  const handleExpand = async (pieceId: string) => {
+    const newId = expandedPiece === pieceId ? null : pieceId;
+    setExpandedPiece(newId);
+    if (newId && !piecesCache[newId]) {
+      try {
+        const full = await api(`/content/pieces/${newId}`);
+        setPiecesCache(prev => ({ ...prev, [newId]: full }));
+      } catch {}
+    }
+  };
+
+  const handleApprove = async (pieceId: string) => {
+    try {
+      await api(`/content/pieces/${pieceId}/approve`, { method: 'PATCH' });
+      setResults(prev => prev.map(p => p.id === pieceId ? { ...p, status: 'APPROVED' } : p));
+    } catch {}
+  };
+
+  const handleReject = async (pieceId: string) => {
+    try {
+      await api(`/content/pieces/${pieceId}/reject`, { method: 'PATCH' });
+      setResults(prev => prev.map(p => p.id === pieceId ? { ...p, status: 'REJECTED' } : p));
+    } catch {}
   };
 
   const handleGeneratePrompt = async (pieceId: string) => {
@@ -79,9 +157,8 @@ export function GeneratePage() {
       if (data?.success && data?.prompt) {
         setPiecePrompts(prev => ({ ...prev, [pieceId]: data.prompt }));
       }
-    } catch (err) {
-      console.error('Prompt generation failed:', err);
-    } finally {
+    } catch {}
+    finally {
       setGeneratingPrompts(prev => ({ ...prev, [pieceId]: false }));
     }
   };
@@ -89,21 +166,16 @@ export function GeneratePage() {
   const handleGenerateImage = async (pieceId: string) => {
     setGeneratingImages(prev => ({ ...prev, [pieceId]: true }));
     try {
-      const prompt = piecePrompts[pieceId] || undefined;
       const data = await api(`/content/pieces/${pieceId}/generate-image`, {
         method: 'POST',
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt: piecePrompts[pieceId] }),
       });
       if (data?.success) {
-        // Prefer persisted URL from S3, fall back to base64 data URL
         const imageUrl = data.imageUrl || (data.imageBase64 ? `data:${data.mimeType};base64,${data.imageBase64}` : null);
-        if (imageUrl) {
-          setPieceImages(prev => ({ ...prev, [pieceId]: imageUrl }));
-        }
+        if (imageUrl) setPieceImages(prev => ({ ...prev, [pieceId]: imageUrl }));
       }
-    } catch (err) {
-      console.error('Image generation failed:', err);
-    } finally {
+    } catch {}
+    finally {
       setGeneratingImages(prev => ({ ...prev, [pieceId]: false }));
     }
   };
@@ -111,38 +183,30 @@ export function GeneratePage() {
   const handleGenerateVideo = async (pieceId: string) => {
     setGeneratingVideos(prev => ({ ...prev, [pieceId]: true }));
     try {
-      // For now, we use placeholder URLs — in production these would come from
-      // an uploaded avatar image and TTS audio generated from the script
       const data = await api('/video/generate', {
         method: 'POST',
         body: JSON.stringify({
           imageUrl: pieceImages[pieceId] || '',
-          audioUrl: '', // TODO: integrate TTS for audio from script
+          audioUrl: '',
           contentPieceId: pieceId,
         }),
       });
       if (data?.success && data?.videoJobId) {
         setVideoJobs(prev => ({ ...prev, [pieceId]: { id: data.videoJobId, status: 'processing' } }));
-        // Poll for status
-        const pollStatus = async () => {
+        const pollVideo = async () => {
           const status = await api(`/video/jobs/${data.videoJobId}`);
           if (status?.success) {
             setVideoJobs(prev => ({ ...prev, [pieceId]: { id: data.videoJobId, status: status.status, videoUrl: status.videoUrl } }));
-            if (status.status !== 'done' && status.status !== 'failed') {
-              setTimeout(pollStatus, 5000);
-            }
+            if (status.status !== 'done' && status.status !== 'failed') setTimeout(pollVideo, 5000);
           }
         };
-        setTimeout(pollStatus, 5000);
+        setTimeout(pollVideo, 5000);
       }
-    } catch (err) {
-      console.error('Video generation failed:', err);
-    } finally {
+    } catch {}
+    finally {
       setGeneratingVideos(prev => ({ ...prev, [pieceId]: false }));
     }
   };
-
-  const client = clients.find((c) => c.id === selectedClient);
 
   return (
     <div className="space-y-6 animate-in">
@@ -156,7 +220,6 @@ export function GeneratePage() {
         <div className="col-span-2 space-y-5">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-5 space-y-5">
-              {/* Client selector */}
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Cliente</Label>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -167,7 +230,7 @@ export function GeneratePage() {
                     {clients.map((c: any) => (
                       <SelectItem key={c.id} value={c.id}>
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded" style={{ background: c.primaryColor }} />
+                          <div className="w-4 h-4 rounded" style={{ background: c.primaryColor || c.branding?.primaryColor || '#7c3aed' }} />
                           {c.name}
                         </div>
                       </SelectItem>
@@ -176,74 +239,48 @@ export function GeneratePage() {
                 </Select>
               </div>
 
-              {/* Brief */}
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
                 <Textarea
                   value={brief}
                   onChange={(e) => setBrief(e.target.value)}
-                  placeholder="Describí qué contenido querés generar. Ej: Campaña de lanzamiento del nuevo menú de primavera, enfocado en ingredientes locales y platos frescos..."
+                  placeholder="Describí qué contenido querés generar. Ej: Campaña de lanzamiento del nuevo menú de primavera..."
                   className="mt-1.5 min-h-[120px]"
                 />
               </div>
 
-              {/* Quantity selectors */}
               <div className="space-y-4 pt-2">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Cantidad por tipo</p>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">▦</span>
-                    <span className="text-sm font-medium">Posts</span>
+                {[
+                  { icon: '▦', label: 'Posts', value: posts, set: setPosts, max: 30 },
+                  { icon: '▶', label: 'Reels', value: reels, set: setReels, max: 20 },
+                  { icon: '◯', label: 'Stories', value: stories, set: setStories, max: 30 },
+                ].map(({ icon, label, value, set, max }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{icon}</span>
+                      <span className="text-sm font-medium">{label}</span>
+                    </div>
+                    <div className="flex items-center gap-3 w-40">
+                      <Slider value={value} onValueChange={set} max={max} step={1} className="flex-1" />
+                      <span className="text-sm font-bold w-6 text-right">{value[0]}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 w-40">
-                    <Slider value={posts} onValueChange={setPosts} max={30} step={1} className="flex-1" />
-                    <span className="text-sm font-bold w-6 text-right">{posts[0]}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">▶</span>
-                    <span className="text-sm font-medium">Reels</span>
-                  </div>
-                  <div className="flex items-center gap-3 w-40">
-                    <Slider value={reels} onValueChange={setReels} max={20} step={1} className="flex-1" />
-                    <span className="text-sm font-bold w-6 text-right">{reels[0]}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">◯</span>
-                    <span className="text-sm font-medium">Stories</span>
-                  </div>
-                  <div className="flex items-center gap-3 w-40">
-                    <Slider value={stories} onValueChange={setStories} max={30} step={1} className="flex-1" />
-                    <span className="text-sm font-bold w-6 text-right">{stories[0]}</span>
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Resumen de generación */}
-              <div className="bg-muted/50 rounded-lg p-3">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>Total piezas</span>
-                  <span className="font-semibold text-foreground">{totalPieces}</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Posts</span>
-                  <span>{posts[0]}</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Reels</span>
-                  <span>{reels[0]}</span>
-                </div>
-                <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                  <span>Stories</span>
-                  <span>{stories[0]}</span>
-                </div>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                {[['Total piezas', totalPieces], ['Posts', posts[0]], ['Reels', reels[0]], ['Stories', stories[0]]].map(([k, v]) => (
+                  <div key={k as string} className="flex justify-between text-xs text-muted-foreground">
+                    <span>{k}</span>
+                    <span className={k === 'Total piezas' ? 'font-semibold text-foreground' : ''}>{v}</span>
+                  </div>
+                ))}
               </div>
+
+              {error && (
+                <div className="text-xs text-red-600 bg-red-50 rounded-lg p-3">{error}</div>
+              )}
 
               <Button
                 onClick={handleGenerate}
@@ -255,18 +292,19 @@ export function GeneratePage() {
             </CardContent>
           </Card>
 
-          {/* Brand context preview */}
           {client && (
             <Card className="border-0 shadow-sm">
-              <div className="h-1" style={{ background: `linear-gradient(to right, ${client.primaryColor}, ${client.secondaryColor})` }} />
+              <div className="h-1" style={{ background: `linear-gradient(to right, ${client.primaryColor || client.branding?.primaryColor || '#7c3aed'}, ${client.secondaryColor || client.branding?.secondaryColor || '#10b981'})` }} />
               <CardContent className="p-4">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Contexto de marca</p>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded" style={{ background: client.primaryColor }} />
+                  <div className="w-6 h-6 rounded" style={{ background: client.primaryColor || client.branding?.primaryColor || '#7c3aed' }} />
                   <span className="text-sm font-medium">{client.name}</span>
                   <Badge variant="secondary" className="text-[10px]">{client.industry}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground italic">"{client.toneOfVoice}"</p>
+                {(client.toneOfVoice || client.branding?.toneOfVoice) && (
+                  <p className="text-xs text-muted-foreground italic">"{client.toneOfVoice || client.branding?.toneOfVoice}"</p>
+                )}
               </CardContent>
             </Card>
           )}
@@ -282,11 +320,11 @@ export function GeneratePage() {
                 </div>
                 <h3 className="font-semibold mb-1">Generando contenido...</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  IA trabajando con el brief para {client?.name}
+                  {progressLabel || `IA trabajando con el brief para ${client?.name}`}
                 </p>
                 <Progress value={Math.min(progress, 100)} className="h-2 max-w-xs mx-auto" />
                 <p className="text-xs text-muted-foreground mt-2">
-                  {Math.min(Math.round(progress / (100 / totalPieces)), totalPieces)}/{totalPieces} piezas
+                  {Math.min(Math.round((progress - 15) / 80 * totalPieces), totalPieces)}/{totalPieces} piezas
                 </p>
               </CardContent>
             </Card>
@@ -296,181 +334,159 @@ export function GeneratePage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Contenido Generado</h2>
-                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">{results.length} piezas listas</Badge>
+                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                  {results.length} piezas listas
+                </Badge>
               </div>
-              {results.map((piece) => (
-                <Card
-                  key={piece.id}
-                  className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer"
-                  onClick={() => setExpandedPiece(expandedPiece === piece.id ? null : piece.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <Badge variant="secondary" className="text-[10px]">
-                            {piece.type === 'POST' ? '▦' : piece.type === 'REEL' ? '▶' : '◯'} {piece.type}
-                          </Badge>
-                          <span className="text-[10px] text-muted-foreground">{piece.platform}</span>
-                          <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${statusColors[piece.status]}`}>
-                            {piece.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm leading-relaxed">{piece.caption}</p>
+              {results.map((piece) => {
+                const full = piecesCache[piece.id];
+                return (
+                  <Card
+                    key={piece.id}
+                    className="border-0 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => handleExpand(piece.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Badge variant="secondary" className="text-[10px]">
+                              {typeIcon[piece.type] || '▦'} {piece.type}
+                            </Badge>
+                            <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${statusColors[piece.status] || ''}`}>
+                              {piece.status}
+                            </Badge>
+                          </div>
+                          <p className="text-sm leading-relaxed">{piece.caption}</p>
 
-                        {expandedPiece === piece.id && (
-                          <div className="mt-3 space-y-3 pt-3 border-t animate-in">
-                            {piece.hook && (
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Hook</span>
-                                <p className="text-sm text-emerald-700 font-medium mt-0.5">{piece.hook}</p>
-                              </div>
-                            )}
-                            {piece.cta && (
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">CTA</span>
-                                <p className="text-sm text-violet-700 font-medium mt-0.5">{piece.cta}</p>
-                              </div>
-                            )}
-                            {piece.script && (
-                              <div>
-                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Guión</span>
-                                <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{piece.script}</pre>
-                              </div>
-                            )}
-                            {piece.hashtags.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {piece.hashtags.map((h) => (
-                                  <span key={h} className="text-[11px] text-violet-500 bg-violet-50 px-2 py-0.5 rounded-md">#{h}</span>
-                                ))}
-                              </div>
-                            )}
-                            {/* Image generation — only for POST and CAROUSEL */}
-                            {(piece.type === 'POST' || piece.type === 'CAROUSEL') && (
-                              <div className="pt-2 space-y-2">
-                                {pieceImages[piece.id] ? (
-                                  <div className="rounded-lg overflow-hidden border border-border/50">
-                                    <img
-                                      src={pieceImages[piece.id]}
-                                      alt="Imagen generada con IA"
-                                      className="w-full object-cover max-h-64"
-                                    />
-                                    <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
-                                      <span className="text-[10px] text-muted-foreground">Imagen generada con Gemini</span>
-                                      <button
-                                        className="text-[10px] text-violet-500 hover:underline"
-                                        onClick={(e) => { e.stopPropagation(); handleGenerateImage(piece.id); }}
-                                      >
-                                        Regenerar
-                                      </button>
+                          {expandedPiece === piece.id && (
+                            <div className="mt-3 space-y-3 pt-3 border-t animate-in" onClick={e => e.stopPropagation()}>
+                              {(full?.hook || piece.hook) && (
+                                <div>
+                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Hook</span>
+                                  <p className="text-sm text-emerald-700 font-medium mt-0.5">{full?.hook || piece.hook}</p>
+                                </div>
+                              )}
+                              {full?.cta && (
+                                <div>
+                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">CTA</span>
+                                  <p className="text-sm text-violet-700 font-medium mt-0.5">{full.cta}</p>
+                                </div>
+                              )}
+                              {full?.script && (
+                                <div>
+                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Guión</span>
+                                  <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{full.script}</pre>
+                                </div>
+                              )}
+                              {full?.hashtags?.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {full.hashtags.map((h: string) => (
+                                    <span key={h} className="text-[11px] text-violet-500 bg-violet-50 px-2 py-0.5 rounded-md">#{h}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {!full && (
+                                <p className="text-xs text-muted-foreground animate-pulse">Cargando detalles...</p>
+                              )}
+
+                              {/* Image generation — POST and CAROUSEL */}
+                              {(piece.type === 'POST' || piece.type === 'CAROUSEL') && (
+                                <div className="pt-2 space-y-2">
+                                  {pieceImages[piece.id] ? (
+                                    <div className="rounded-lg overflow-hidden border border-border/50">
+                                      <img src={pieceImages[piece.id]} alt="Imagen generada" className="w-full object-cover max-h-64" />
+                                      <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
+                                        <span className="text-[10px] text-muted-foreground">Imagen generada con Gemini</span>
+                                        <button className="text-[10px] text-violet-500 hover:underline" onClick={() => handleGenerateImage(piece.id)}>
+                                          Regenerar
+                                        </button>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : piecePrompts[piece.id] ? (
-                                  <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Prompt de imagen (editable)</span>
-                                      <button
-                                        className="text-[10px] text-violet-500 hover:underline"
-                                        onClick={() => handleGeneratePrompt(piece.id)}
+                                  ) : piecePrompts[piece.id] ? (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Prompt de imagen (editable)</span>
+                                        <button className="text-[10px] text-violet-500 hover:underline" onClick={() => handleGeneratePrompt(piece.id)}>
+                                          Regenerar prompt
+                                        </button>
+                                      </div>
+                                      <textarea
+                                        value={piecePrompts[piece.id]}
+                                        onChange={e => setPiecePrompts(prev => ({ ...prev, [piece.id]: e.target.value }))}
+                                        className="text-xs w-full min-h-[80px] bg-muted/30 border border-violet-200 focus:border-violet-400 rounded-lg p-2 outline-none resize-none"
+                                      />
+                                      <Button
+                                        size="sm"
+                                        className="text-xs h-7 bg-gradient-to-r from-violet-500 to-emerald-500 text-white w-full"
+                                        onClick={() => handleGenerateImage(piece.id)}
+                                        disabled={generatingImages[piece.id]}
                                       >
-                                        Regenerar prompt
-                                      </button>
+                                        {generatingImages[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> Generando...</span> : '✦ Generar imagen con Gemini'}
+                                      </Button>
                                     </div>
-                                    <Textarea
-                                      value={piecePrompts[piece.id]}
-                                      onChange={(e) => setPiecePrompts(prev => ({ ...prev, [piece.id]: e.target.value }))}
-                                      className="text-xs min-h-[80px] bg-muted/30 border-violet-200 focus:border-violet-400"
-                                    />
+                                  ) : (
                                     <Button
                                       size="sm"
-                                      className="text-xs h-7 bg-gradient-to-r from-violet-500 to-emerald-500 text-white w-full"
-                                      onClick={() => handleGenerateImage(piece.id)}
-                                      disabled={generatingImages[piece.id]}
+                                      variant="outline"
+                                      className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
+                                      onClick={() => handleGeneratePrompt(piece.id)}
+                                      disabled={generatingPrompts[piece.id]}
                                     >
-                                      {generatingImages[piece.id] ? (
-                                        <span className="flex items-center gap-1.5">
-                                          <span className="animate-spin">✦</span> Generando imagen...
-                                        </span>
-                                      ) : (
-                                        '✦ Generar imagen con Gemini'
-                                      )}
+                                      {generatingPrompts[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> Creando prompt...</span> : '✦ Crear prompt de imagen'}
                                     </Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
-                                    onClick={(e) => { e.stopPropagation(); handleGeneratePrompt(piece.id); }}
-                                    disabled={generatingPrompts[piece.id]}
-                                  >
-                                    {generatingPrompts[piece.id] ? (
-                                      <span className="flex items-center gap-1.5">
-                                        <span className="animate-spin">✦</span> Creando prompt con IA...
-                                      </span>
-                                    ) : (
-                                      '✦ Crear prompt de imagen'
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
-                            )}
+                                  )}
+                                </div>
+                              )}
 
-                            {/* Video generation — for REEL and STORY */}
-                            {(piece.type === 'REEL' || piece.type === 'STORY') && (
-                              <div className="pt-2">
-                                {videoJobs[piece.id]?.videoUrl ? (
-                                  <div className="rounded-lg overflow-hidden border border-border/50">
-                                    <video
-                                      src={videoJobs[piece.id].videoUrl}
-                                      controls
-                                      className="w-full max-h-64"
-                                    />
-                                    <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
-                                      <span className="text-[10px] text-muted-foreground">Video generado con Creatify Aurora</span>
+                              {/* Video generation — REEL and STORY */}
+                              {(piece.type === 'REEL' || piece.type === 'STORY') && (
+                                <div className="pt-2">
+                                  {videoJobs[piece.id]?.videoUrl ? (
+                                    <div className="rounded-lg overflow-hidden border border-border/50">
+                                      <video src={videoJobs[piece.id].videoUrl} controls className="w-full max-h-64" />
+                                      <div className="px-2 py-1.5 bg-muted/30">
+                                        <span className="text-[10px] text-muted-foreground">Video generado con Creatify Aurora</span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : videoJobs[piece.id]?.status === 'processing' ? (
-                                  <div className="flex items-center gap-2 text-xs text-violet-600 bg-violet-50 rounded-lg p-2">
-                                    <span className="animate-spin">✦</span>
-                                    <span>Generando video con avatar...</span>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
-                                    onClick={(e) => { e.stopPropagation(); handleGenerateVideo(piece.id); }}
-                                    disabled={generatingVideos[piece.id]}
-                                  >
-                                    {generatingVideos[piece.id] ? (
-                                      <span className="flex items-center gap-1.5">
-                                        <span className="animate-spin">✦</span> Iniciando...
-                                      </span>
-                                    ) : (
-                                      '▶ Generar video con avatar'
-                                    )}
-                                  </Button>
-                                )}
-                              </div>
-                            )}
+                                  ) : videoJobs[piece.id]?.status === 'processing' ? (
+                                    <div className="flex items-center gap-2 text-xs text-violet-600 bg-violet-50 rounded-lg p-2">
+                                      <span className="animate-spin">✦</span>
+                                      <span>Generando video con avatar...</span>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-xs h-7 border-dashed border-violet-300 text-violet-600 hover:bg-violet-50 w-full"
+                                      onClick={() => handleGenerateVideo(piece.id)}
+                                      disabled={generatingVideos[piece.id]}
+                                    >
+                                      {generatingVideos[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> Iniciando...</span> : '▶ Generar video con avatar'}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
 
-                            <div className="flex items-center gap-4 pt-2">
-                              <span className="text-[10px] text-muted-foreground">Generado con IA</span>
+                              <div className="flex gap-2 pt-2">
+                                <Button size="sm" className="text-xs h-7 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => handleApprove(piece.id)} disabled={piece.status === 'APPROVED'}>
+                                  Aprobar
+                                </Button>
+                                <Button size="sm" variant="outline" className="text-xs h-7 text-red-500 border-red-200 hover:bg-red-50" onClick={() => handleReject(piece.id)} disabled={piece.status === 'REJECTED'}>
+                                  Rechazar
+                                </Button>
+                                <Button size="sm" variant="outline" className="text-xs h-7 ml-auto">
+                                  Programar
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex gap-2 pt-1">
-                              <Button size="sm" variant="outline" className="text-xs h-7">Editar</Button>
-                              <Button size="sm" className="text-xs h-7 bg-emerald-500 hover:bg-emerald-600 text-white">Aprobar</Button>
-                              <Button size="sm" variant="outline" className="text-xs h-7 text-red-500 border-red-200 hover:bg-red-50">Rechazar</Button>
-                              <Button size="sm" variant="outline" className="text-xs h-7 ml-auto">Programar</Button>
-                            </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
 
@@ -481,8 +497,7 @@ export function GeneratePage() {
               </div>
               <h3 className="text-lg font-semibold mb-1">Listo para crear</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Seleccioná un cliente, escribí un brief y elegí cuántas piezas generar.
-                La IA se encarga del resto.
+                Seleccioná un cliente, escribí un brief y elegí cuántas piezas generar. La IA se encarga del resto.
               </p>
             </div>
           )}
