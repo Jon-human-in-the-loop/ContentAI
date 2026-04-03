@@ -140,13 +140,12 @@ export function ClientsPage() {
         branding: {
           primaryColor: form.primaryColor,
           secondaryColor: form.secondaryColor,
-          font: form.font.trim() || undefined,
+          fontPrimary: form.font.trim() || undefined,
           toneOfVoice: form.toneOfVoice.trim() || undefined,
-          targetAudience: form.targetAudience.trim() || undefined,
-          keywords: form.keywords ? form.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
-          prohibitedWords: form.prohibitedWords ? form.prohibitedWords.split(',').map(w => w.trim()).filter(Boolean) : [],
+          sampleContent: form.targetAudience.trim() || undefined,
+          styleKeywords: form.keywords ? form.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+          prohibitions: form.prohibitedWords ? form.prohibitedWords.split(',').map(w => w.trim()).filter(Boolean) : [],
         },
-        platforms: form.platforms,
       };
       const created = await api('/clients', { method: 'POST', body: JSON.stringify(payload) });
       setClients(prev => [...prev, {
@@ -162,8 +161,9 @@ export function ClientsPage() {
       }]);
       setForm(emptyForm);
       setDialogOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create client:', err);
+      alert('Error al crear el cliente: ' + (err?.message || 'Error desconocido'));
     } finally {
       setSaving(false);
     }
@@ -199,13 +199,12 @@ export function ClientsPage() {
         branding: {
           primaryColor: editForm.primaryColor,
           secondaryColor: editForm.secondaryColor,
-          font: editForm.font.trim() || undefined,
+          fontPrimary: editForm.font.trim() || undefined,
           toneOfVoice: editForm.toneOfVoice.trim() || undefined,
-          targetAudience: editForm.targetAudience.trim() || undefined,
-          keywords: editForm.keywords ? editForm.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
-          prohibitedWords: editForm.prohibitedWords ? editForm.prohibitedWords.split(',').map(w => w.trim()).filter(Boolean) : [],
+          sampleContent: editForm.targetAudience.trim() || undefined,
+          styleKeywords: editForm.keywords ? editForm.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+          prohibitions: editForm.prohibitedWords ? editForm.prohibitedWords.split(',').map(w => w.trim()).filter(Boolean) : [],
         },
-        platforms: editForm.platforms,
       };
       const updated = await api(`/clients/${selectedClient.id}`, { method: 'PUT', body: JSON.stringify(payload) });
       const mapped: Client = {
@@ -220,8 +219,9 @@ export function ClientsPage() {
       setClients(prev => prev.map(c => c.id === selectedClient.id ? mapped : c));
       setSelectedClient(mapped);
       setEditDialogOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update client:', err);
+      alert('Error al guardar los cambios: ' + (err?.message || 'Error desconocido'));
     } finally {
       setEditSaving(false);
     }
