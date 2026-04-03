@@ -128,7 +128,7 @@ export class BillingService {
       return;
     }
 
-    let event: StripeLib.Stripe.Event;
+    let event: StripeLib.Stripe["Event"];
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err) {
@@ -140,7 +140,7 @@ export class BillingService {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as StripeLib.Stripe.Checkout.Session;
+        const session = event.data.object as StripeLib.Stripe["Checkout"]["Session"];
         const orgId = session.metadata?.orgId;
         const plan = session.metadata?.plan as string;
         if (orgId && plan) {
@@ -150,13 +150,13 @@ export class BillingService {
       }
 
       case 'customer.subscription.updated': {
-        const sub = event.data.object as StripeLib.Stripe.Subscription;
+        const sub = event.data.object as StripeLib.Stripe["Subscription"];
         await this.syncSubscription(sub);
         break;
       }
 
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as StripeLib.Stripe.Subscription;
+        const sub = event.data.object as StripeLib.Stripe["Subscription"];
         const orgId = sub.metadata?.orgId;
         if (orgId) {
           await this.updateOrgPlan(orgId, 'STARTER', null);
@@ -165,7 +165,7 @@ export class BillingService {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as StripeLib.Stripe.Invoice;
+        const invoice = event.data.object as StripeLib.Stripe["Invoice"];
         this.logger.warn(`Payment failed for customer ${invoice.customer}`);
         // Could send notification email here
         break;
@@ -189,7 +189,7 @@ export class BillingService {
     }
   }
 
-  private async syncSubscription(sub: StripeLib.Stripe.Subscription): Promise<void> {
+  private async syncSubscription(sub: StripeLib.Stripe["Subscription"]): Promise<void> {
     // Find org by Stripe customer ID
     const orgs = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Organization" WHERE "stripeCustomerId" = ${sub.customer as string}
