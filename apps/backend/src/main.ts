@@ -9,8 +9,21 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
 
+  const rawOrigin = config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+  const allowedOrigins = rawOrigin
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+
   app.enableCors({
-    origin: config.get('FRONTEND_URL', 'http://localhost:3000'),
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked: ${origin}`), false);
+    },
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
