@@ -1,14 +1,16 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
-import Stripe from 'stripe';
+import * as StripeLib from 'stripe';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const StripeConstructor = require('stripe');
 
 export const PLAN_PRICE_IDS: Record<string, string | undefined> = {};
 
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
-  private stripe: Stripe | null = null;
+  private stripe: StripeLib.Stripe | null = null;
 
   constructor(
     private config: ConfigService,
@@ -16,7 +18,7 @@ export class BillingService {
   ) {
     const secretKey = this.config.get<string>('STRIPE_SECRET_KEY');
     if (secretKey) {
-      this.stripe = new Stripe(secretKey, { apiVersion: '2025-03-31.basil' });
+      this.stripe = new StripeConstructor(secretKey, { apiVersion: '2025-03-31.basil' }) as StripeLib.Stripe;
       // Map plan names to Stripe Price IDs from env
       PLAN_PRICE_IDS['STARTER'] = this.config.get('STRIPE_PRICE_STARTER');
       PLAN_PRICE_IDS['PRO'] = this.config.get('STRIPE_PRICE_PRO');
@@ -126,7 +128,7 @@ export class BillingService {
       return;
     }
 
-    let event: Stripe.Event;
+    let event: StripeLib.Stripe.Event;
     try {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err) {
@@ -138,7 +140,7 @@ export class BillingService {
 
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
+        const session = event.data.object as StripeLib.Stripe.Checkout.Session;
         const orgId = session.metadata?.orgId;
         const plan = session.metadata?.plan as string;
         if (orgId && plan) {
@@ -148,13 +150,13 @@ export class BillingService {
       }
 
       case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object as StripeLib.Stripe.Subscription;
         await this.syncSubscription(sub);
         break;
       }
 
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object as StripeLib.Stripe.Subscription;
         const orgId = sub.metadata?.orgId;
         if (orgId) {
           await this.updateOrgPlan(orgId, 'STARTER', null);
@@ -163,7 +165,7 @@ export class BillingService {
       }
 
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
+        const invoice = event.data.object as StripeLib.Stripe.Invoice;
         this.logger.warn(`Payment failed for customer ${invoice.customer}`);
         // Could send notification email here
         break;
@@ -187,7 +189,7 @@ export class BillingService {
     }
   }
 
-  private async syncSubscription(sub: Stripe.Subscription): Promise<void> {
+  private async syncSubscription(sub: StripeLib.Stripe.Subscription): Promise<void> {
     // Find org by Stripe customer ID
     const orgs = await this.prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Organization" WHERE "stripeCustomerId" = ${sub.customer as string}
