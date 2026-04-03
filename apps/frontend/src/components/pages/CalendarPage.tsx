@@ -34,6 +34,8 @@ export function CalendarPage() {
   const [calendarEvents, setCalendarEvents] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [unschedulingId, setUnschedulingId] = useState<string | null>(null);
+  const [detailPiece, setDetailPiece] = useState<any | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     async function loadEvents() {
@@ -114,6 +116,18 @@ export function CalendarPage() {
   };
 
   const selectedEvents = selectedDay ? getEventsForDay(parseInt(selectedDay)) : [];
+
+  const handleViewDetail = async (pieceId: string) => {
+    setDetailPiece(null);
+    setLoadingDetail(true);
+    try {
+      const data = await api(`/content/pieces/${pieceId}`);
+      setDetailPiece(data);
+    } catch {}
+    finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const handleUnschedule = async (pieceId: string) => {
     setUnschedulingId(pieceId);
@@ -221,6 +235,58 @@ export function CalendarPage() {
       </div>
 
       {/* Selected day detail */}
+      {/* ── Piece Detail Panel ── */}
+      {(detailPiece || loadingDetail) && (
+        <Card className="border-0 shadow-lg animate-in">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Detalle de pieza</h3>
+              <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setDetailPiece(null)}>✕ Cerrar</button>
+            </div>
+            {loadingDetail ? (
+              <p className="text-xs text-muted-foreground animate-pulse">Cargando...</p>
+            ) : detailPiece && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[10px]">{detailPiece.type}</Badge>
+                  <Badge variant="secondary" className="text-[10px]">{detailPiece.status}</Badge>
+                  <span className="text-xs text-muted-foreground">{detailPiece.client?.name}</span>
+                </div>
+                {detailPiece.hook && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Hook</p>
+                    <p className="text-sm text-emerald-700 font-medium mt-0.5">{detailPiece.hook}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Caption</p>
+                  <p className="text-sm mt-0.5 leading-relaxed">{detailPiece.caption}</p>
+                </div>
+                {detailPiece.cta && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">CTA</p>
+                    <p className="text-sm text-violet-700 font-medium mt-0.5">{detailPiece.cta}</p>
+                  </div>
+                )}
+                {detailPiece.script && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Guión</p>
+                    <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{detailPiece.script}</pre>
+                  </div>
+                )}
+                {detailPiece.hashtags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {detailPiece.hashtags.map((h: string) => (
+                      <span key={h} className="text-[11px] text-violet-500 bg-violet-50 px-2 py-0.5 rounded-md">#{h}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {selectedDay && (
         <Card className="border-0 shadow-lg animate-in">
           <CardContent className="p-5">
@@ -243,7 +309,7 @@ export function CalendarPage() {
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{ev.caption}</p>
                       <div className="flex gap-2 mt-2">
-                        <Button size="sm" variant="outline" className="h-6 text-[10px]">Ver detalle</Button>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => handleViewDetail(ev.id)}>Ver detalle</Button>
                         {ev.status === 'SCHEDULED' && (
                           <Button
                             size="sm"

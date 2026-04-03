@@ -25,9 +25,13 @@ const typeIcon: Record<string, string> = {
   CAROUSEL: '▦▦',
 };
 
-export function GeneratePage() {
+interface GeneratePageProps {
+  initialClientId?: string;
+}
+
+export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
   const [clients, setClients] = useState<any[]>([]);
-  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedClient, setSelectedClient] = useState(initialClientId || '');
   const [brief, setBrief] = useState('');
   const [posts, setPosts] = useState([3]);
   const [reels, setReels] = useState([1]);
@@ -53,6 +57,11 @@ export function GeneratePage() {
       .catch(() => {});
     return () => { if (pollRef.current) clearTimeout(pollRef.current); };
   }, []);
+
+  // Apply initialClientId when it changes (navigation from ClientsPage)
+  useEffect(() => {
+    if (initialClientId) setSelectedClient(initialClientId);
+  }, [initialClientId]);
 
   const totalPieces = posts[0] + reels[0] + stories[0];
   const client = clients.find((c) => c.id === selectedClient);
