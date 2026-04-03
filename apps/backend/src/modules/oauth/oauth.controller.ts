@@ -32,7 +32,7 @@ export class OAuthController {
    * Redirects user to provider's OAuth consent page
    */
   @Get(':platform/authorize')
-  authorize(
+  async authorize(
     @Param('platform') platform: string,
     @Query('clientId') clientId: string,
     @Res() res: Response,

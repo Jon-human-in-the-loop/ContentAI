@@ -167,7 +167,7 @@ export class AdminService {
 
   getSummary(): { total: number; configured: number; missing: string[] } {
     const status = this.getConfigStatus();
-    const all = Object.values(status).flatMap(cat => Object.entries(cat));
+    const all = Object.values(status).flatMap(cat => Object.entries(cat)) as [string, ServiceStatus][];
     const missing = all.filter(([, s]) => !s.configured).map(([, s]) => s.label);
     return {
       total: all.length,
