@@ -260,12 +260,23 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                         const industry = clientInfo?.industry || 'su sector principal';
                         const toneInfo = clientInfo?.toneOfVoice || clientInfo?.branding?.toneOfVoice || '';
                         
-                        // Construir contexto extra si existe el tono
-                        const toneInstruction = toneInfo ? ` El estilo de comunicación o tono de la marca es: "${toneInfo}". Adapta la idea de manera que encaje con esa personalidad. ` : '';
-
                         setIsGeneratingIdea(true);
                         try {
-                          const instruction = `Actúa como un experto trafficker y copywriter armando un prompt para ${clientName}. Su nicho es: ${industry}.${toneInstruction} Escribe una idea de prompt directo y agresivo, cuestionando las métricas de sus clientes potenciales. Ejemplo de estructura: "Habla sobre los 3 errores más comunes que cometen las tiendas online al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra Auditoría gratuita. Menciona un dato duro inventado muy creíble como que el CPC subió un 25% este año." Devuelve UNICAMENTE el texto del prompt sin introducciones ni comillas corporativas, de máximo 5 renglones.`;
+                          const toneInstruction = toneInfo 
+                            ? `El tono de voz OBLIGATORIO de la marca es: "${toneInfo}". Todo el enfoque del prompt debe respirar esa personalidad.` 
+                            : `Asegúrate de que el tono sea persuasivo y profesional.`;
+
+                          const instruction = `Actúa como un experto trafficker y copywriter armando un prompt para crear un post en redes sociales para la marca ${clientName}. 
+Nicho: ${industry}. 
+${toneInstruction}
+
+Escribe una breve IDEA DE PROMPT sobre un tema clave en su nicho.
+Requisitos: 
+- Debe desarrollar un punto de dolor o interés de la audiencia objetivo.
+- El CTA final debe invitarlos a contactarnos o agendar un servicio.
+- Pide incluir un dato estadístico o hecho curioso relacionado.
+
+Devuelve UNICAMENTE el texto del prompt en tu idioma nativo (español) sin introducciones ni comillas corporativas, estructurado de forma concisa en máximo 5 renglones.`;
                           
                           const response = await fetch('https://text.pollinations.ai/openai', {
                             method: 'POST',
