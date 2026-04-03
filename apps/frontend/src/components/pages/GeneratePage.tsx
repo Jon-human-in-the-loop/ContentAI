@@ -49,9 +49,19 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
   const [generatingVideos, setGeneratingVideos] = useState<Record<string, boolean>>({});
   const [videoJobs, setVideoJobs] = useState<Record<string, { id: string; status: string; videoUrl?: string }>>({});
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Inyectar Puter.js para usar Grok de forma gratuita
+    if (!(window as any).puter && !document.getElementById('puter-script')) {
+      const script = document.createElement('script');
+      script.id = 'puter-script';
+      script.src = 'https://js.puter.com/v2/';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
     api('/clients')
       .then(data => setClients(data || []))
       .catch(() => {});
@@ -253,22 +263,34 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                   <div className="flex items-center gap-2">
                     <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
                     <button 
-                      onClick={() => {
-                        const ideas = [
-                          "[Contexto] Desmiente el mito más grande del sector y muestra cómo tu servicio lo resuelve de raíz. [Objetivo] Generar confianza y debate. [Particularidad] Invita a dejar su opinión en los comentarios.",
-                          "[Contexto] Cuenta el 'antes y después' de un cliente que logró resultados increíbles. [Objetivo] Vender autoridad técnica. [Particularidad] Usa números duros (% de mejora o tiempo ahorrado) y un CTA para agendar llamada.",
-                          "[Contexto] Describe 3 errores gravísimos que la audiencia hace a diario sin darse cuenta y dales la solución. [Objetivo] Educar y aportar valor. [Particularidad] Cierra enviándolos al link en bio para la guía completa.",
-                          "[Contexto] Rebate la típica objeción del cliente ideal: 'esto es muy caro' o 'no tengo tiempo'. [Objetivo] Demostrar Retorno de Inversión (ROI). [Particularidad] El CTA pide que comenten la palabra INFO para recibir un DM con detalles.",
-                          "[Contexto] Resalta la oportunidad de temporada o promoción de cierre de mes. [Objetivo] Generar urgencia y ventas inmediatas. [Particularidad] Destaca que hay cupos limitados y el beneficio central del servicio."
-                        ];
-                        setBrief(ideas[Math.floor(Math.random() * ideas.length)]);
+                      onClick={async () => {
+                        const clientInfo = clients.find(c => c.id === selectedClient);
+                        const industry = clientInfo?.industry || 'servicios';
+                        
+                        setIsGeneratingIdea(true);
+                        try {
+                          if ((window as any).puter?.ai?.chat) {
+                            const instruction = `Actúa como un experto trafficker y copywriter. Escribe una idea de prompt directo y agresivo, cuestionando las métricas de las tiendas o negocios en el nicho de ${industry} para el cliente. Ejemplo: "Habla sobre los 3 errores más comunes que cometen las tiendas online al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra Auditoría gratuita. Menciona un dato duro inventado muy creíble como que el CPC subió un 25% este año." Devuelve UNICAMENTE el texto del prompt sin introducciones ni comillas corporativas, de máximo 5 renglones.`;
+                            
+                            const response = await (window as any).puter.ai.chat(instruction, { model: 'x-ai/grok-4-1-fast' });
+                            setBrief(response?.message?.content || response);
+                          } else {
+                            throw new Error("Puter SDK no está listo");
+                          }
+                        } catch (err) {
+                          console.log("Fallback a prompt hardcodeado", err);
+                          setBrief(`Habla sobre los 3 errores más comunes que cometen los negocios en ${industry} al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición (CPA) subió drásticamente este año.`);
+                        } finally {
+                          setIsGeneratingIdea(false);
+                        }
                       }}
-                      className="text-[10px] text-violet-600 font-medium hover:text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                      disabled={isGeneratingIdea}
+                      className="text-[10px] text-violet-600 font-medium hover:text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                     >
-                      🪄 Dame una idea (Generador)
+                      {isGeneratingIdea ? '✨ Pensando...' : '🪄 Dame una idea (Grok AI)'}
                     </button>
                   </div>
-                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ Método C.O.P.</span>
+                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ Creado por Grok AI</span>
                 </div>
                 <Textarea
                   value={brief}
@@ -279,10 +301,10 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                 <div className="mt-2 text-[11px] text-muted-foreground leading-relaxed bg-slate-50 border border-slate-100 p-2.5 rounded-md">
                   <span className="font-medium text-slate-700 block mb-1">💡 Tips para un mejor resultado:</span>
                   <ul className="list-disc pl-3 space-y-0.5 text-slate-500">
-                    <li><strong>Contexto:</strong> Di de qué trata la pieza exactamente.</li>
+                    <li><strong>Contexto:</strong> Di de qué trata la pieza y el formato (directo, agresivo, empático).</li>
                     <li><strong>Objetivo:</strong> Cuál es el llamado a la acción (CTA) deseado.</li>
-                    <li><strong>Particularidad:</strong> Algún dato clave, ángulo único o promoción.</li>
-                    <li className="text-violet-600/80">No es necesario repetir el perfil o tono del cliente, la IA ya lo sabe.</li>
+                    <li><strong>Particularidad:</strong> Inventa un dato clave o métrica, la IA de ContentAI lo desarrollará.</li>
+                    <li className="text-violet-600/80">O simplemente dale al botón <strong>Dame una idea</strong> para autocompletar usando inteligencia artificial.</li>
                   </ul>
                 </div>
               </div>
