@@ -308,7 +308,7 @@ export function ClientsPage() {
               + Nuevo cliente
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nuevo Cliente</DialogTitle>
               <p className="text-xs text-muted-foreground mt-0.5">Completá los datos de la marca para que la IA genere contenido personalizado</p>

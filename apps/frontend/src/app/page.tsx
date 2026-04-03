@@ -39,8 +39,9 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated()) {
       const existing = getSession();
+      const token = typeof window !== 'undefined' ? localStorage.getItem('contentai_token') || '' : '';
       if (existing) {
-        setSession({ ...existing, token: '' } as AuthSession);
+        setSession({ ...existing, token } as AuthSession);
       }
     }
     setAuthChecked(true);
