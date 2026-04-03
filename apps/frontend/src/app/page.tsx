@@ -9,7 +9,6 @@ import { ContentPage } from '@/components/pages/ContentPage';
 import { CalendarPage } from '@/components/pages/CalendarPage';
 import { AnalyticsPage } from '@/components/pages/AnalyticsPage';
 import { SettingsPage } from '@/components/pages/SettingsPage';
-import { LoginPage } from '@/components/pages/LoginPage';
 import { getSession, clearSession, AuthSession } from '@/lib/auth';
 
 const pages: Record<string, React.ComponentType> = {
@@ -22,34 +21,29 @@ const pages: Record<string, React.ComponentType> = {
   settings: SettingsPage,
 };
 
+const DEMO_SESSION: AuthSession = {
+  token: '',
+  user: { id: 'demo-user', email: 'demo@contentai.app', name: 'Demo User', role: 'OWNER' },
+  organization: { id: 'demo-org', name: 'Mi Agencia', plan: 'STARTER' },
+};
+
 export default function Home() {
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<AuthSession>(DEMO_SESSION);
 
-  // Check for existing session on mount (localStorage is client-only)
+  // If a real session exists in localStorage, use it instead
   useEffect(() => {
     const existing = getSession();
     if (existing) {
       setSession(existing as AuthSession);
     }
-    setReady(true);
   }, []);
-
-  const handleLogin = (s: AuthSession) => setSession(s);
 
   const handleLogout = () => {
     clearSession();
-    setSession(null);
+    setSession(DEMO_SESSION);
     setCurrentPage('dashboard');
   };
-
-  // Avoid flash of login screen while checking localStorage
-  if (!ready) return null;
-
-  if (!session) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
 
   const PageComponent = pages[currentPage] || DashboardPage;
 
