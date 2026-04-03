@@ -265,12 +265,17 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                     <button 
                       onClick={async () => {
                         const clientInfo = clients.find(c => c.id === selectedClient);
-                        const industry = clientInfo?.industry || 'servicios';
+                        const clientName = clientInfo?.name || 'el cliente';
+                        const industry = clientInfo?.industry || 'su sector principal';
+                        const toneInfo = clientInfo?.toneOfVoice || clientInfo?.branding?.toneOfVoice || '';
                         
+                        // Construir contexto extra si existe el tono
+                        const toneInstruction = toneInfo ? ` El estilo de comunicación o tono de la marca es: "${toneInfo}". Adapta la idea de manera que encaje con esa personalidad. ` : '';
+
                         setIsGeneratingIdea(true);
                         try {
                           if ((window as any).puter?.ai?.chat) {
-                            const instruction = `Actúa como un experto trafficker y copywriter. Escribe una idea de prompt directo y agresivo, cuestionando las métricas de las tiendas o negocios en el nicho de ${industry} para el cliente. Ejemplo: "Habla sobre los 3 errores más comunes que cometen las tiendas online al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra Auditoría gratuita. Menciona un dato duro inventado muy creíble como que el CPC subió un 25% este año." Devuelve UNICAMENTE el texto del prompt sin introducciones ni comillas corporativas, de máximo 5 renglones.`;
+                            const instruction = `Actúa como un experto trafficker y copywriter armando un prompt para ${clientName}. Su nicho es: ${industry}.${toneInstruction} Escribe una idea de prompt directo y agresivo, cuestionando las métricas de sus clientes potenciales. Ejemplo de estructura: "Habla sobre los 3 errores más comunes que cometen las tiendas online al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra Auditoría gratuita. Menciona un dato duro inventado muy creíble como que el CPC subió un 25% este año." Devuelve UNICAMENTE el texto del prompt sin introducciones ni comillas corporativas, de máximo 5 renglones.`;
                             
                             const response = await (window as any).puter.ai.chat(instruction, { model: 'x-ai/grok-4-1-fast' });
                             setBrief(response?.message?.content || response);
@@ -279,7 +284,7 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                           }
                         } catch (err) {
                           console.log("Fallback a prompt hardcodeado", err);
-                          setBrief(`Habla sobre los 3 errores más comunes que cometen los negocios en ${industry} al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición (CPA) subió drásticamente este año.`);
+                          setBrief(`Habla sobre los 3 errores más comunes que cometen los prospectos de ${clientName} en el nicho de ${industry}. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición subió drásticamente este año.`);
                         } finally {
                           setIsGeneratingIdea(false);
                         }
