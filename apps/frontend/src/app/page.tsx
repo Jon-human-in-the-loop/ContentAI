@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { getSession, clearSession, AuthSession } from '@/lib/auth';
+import { getSession, clearSession, saveSession, isAuthenticated, AuthSession } from '@/lib/auth';
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -22,27 +22,30 @@ const CalendarPage  = dynamic(() => import('@/components/pages/CalendarPage').th
 const AnalyticsPage = dynamic(() => import('@/components/pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })), { loading: PageLoader, ssr: false });
 const SettingsPage  = dynamic(() => import('@/components/pages/SettingsPage').then(m => ({ default: m.SettingsPage })),   { loading: PageLoader, ssr: false });
 const ConfigPage    = dynamic(() => import('@/components/pages/ConfigPage').then(m => ({ default: m.ConfigPage })),       { loading: PageLoader, ssr: false });
+const LoginPage     = dynamic(() => import('@/components/pages/LoginPage').then(m => ({ default: m.LoginPage })),         { ssr: false });
 
 export interface PageContext {
   clientId?: string;
   pieceId?: string;
 }
 
-const DEMO_SESSION: AuthSession = {
-  token: '',
-  user: { id: 'demo-user', email: 'demo@contentai.app', name: 'Demo User', role: 'OWNER' },
-  organization: { id: 'demo-org', name: 'Mi Agencia', plan: 'STARTER' },
-};
-
 export default function Home() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [pageContext, setPageContext] = useState<PageContext>({});
-  const [session, setSession] = useState<AuthSession>(DEMO_SESSION);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
+  // Check auth on mount
   useEffect(() => {
-    const existing = getSession();
-    if (existing) setSession(existing as AuthSession);
+    if (isAuthenticated()) {
+      const existing = getSession();
+      if (existing) {
+        setSession({ ...existing, token: '' } as AuthSession);
+      }
+    }
+    setAuthChecked(true);
   }, []);
+
 
   // Cross-page navigation via custom event: navigate({ page: 'generate', clientId: '...' })
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function Home() {
 
   const handleLogout = () => {
     clearSession();
-    setSession(DEMO_SESSION);
+    setSession(null);
     setCurrentPage('dashboard');
     setPageContext({});
   };
@@ -80,6 +83,21 @@ export default function Home() {
       default: return <DashboardPage />;
     }
   };
+
+  // While checking localStorage, show nothing to avoid flash
+  if (!authChecked) return null;
+
+  // Not authenticated → show login
+  if (!session) {
+    return (
+      <LoginPage
+        onLogin={(s) => {
+          saveSession(s);
+          setSession(s);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background">

@@ -161,7 +161,7 @@ curl -X POST http://localhost:4000/api/v1/auth/register \
   }'
 ```
 
-Guarda el `token` que devuelve. Por ahora el frontend no tiene pantalla de login (ver estado más abajo).
+Luego abre `http://localhost:3000` y usa esas credenciales para iniciar sesión.
 
 ---
 
@@ -281,23 +281,23 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 | Cuentas de redes sociales (OAuth) | ✅ Completo | Meta, LinkedIn, X, TikTok, Threads |
 | Google Calendar sync | ✅ Completo | Export de eventos al programar |
 | Cost tracking | ✅ Completo | Dashboard de costos por modelo |
-| Registro/Login JWT | ✅ Backend completo | API funciona, falta UI |
+| Login/Register UI | ✅ Completo | Pantalla con tabs login/registro |
+| JWT en peticiones API | ✅ Completo | api.ts envía Bearer token automáticamente |
+| Lazy loading de páginas | ✅ Completo | next/dynamic — bundle inicial reducido |
+| Registro/Login JWT | ✅ Completo | API + UI funcionales |
 | Multi-tenancy | ✅ Completo | Aislamiento por orgId |
 
 ### ⚠️ Pendiente para pruebas
 
 | Feature | Prioridad | Descripción |
 |---------|-----------|-------------|
-| **Login/Register en frontend** | 🔴 Alta | El backend tiene JWT completo, el frontend no tiene pantalla de login |
-| **JWT en peticiones API** | 🔴 Alta | `api.ts` no envía `Authorization: Bearer` todavía |
-| **Seed de datos de prueba** | 🟡 Media | Sin datos iniciales es difícil probar |
+| **Seed de datos de prueba** | 🟡 Media | Script disponible en `prisma/seed-admin.ts` |
 
 ### ⛔ Pendiente para producción
 
 | Feature | Prioridad | Descripción |
 |---------|-----------|-------------|
-| **Login UI** | 🔴 Crítico | Ver arriba |
-| **Guards en todos los endpoints** | 🔴 Crítico | Algunos controllers usan `|| 'demo-org'` en vez de JWT |
+| **Guards en todos los endpoints** | 🔴 Crítico | Algunos controllers usan `\|\| 'demo-org'` en vez de JWT |
 | **Variables de entorno reales** | 🔴 Crítico | APIs de redes sociales, S3, Creatify |
 | **Token refresh OAuth** | 🟡 Media | Tokens vencen, no hay auto-refresh |
 | **Error notifications en UI** | 🟡 Media | Cuando falla una publicación no avisa |
@@ -308,40 +308,32 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 
 ## Lo que falta para pruebas (detalle técnico)
 
-### 1. Pantalla de Login/Register en frontend
+### 1. Crear usuario administrador
 
-El backend ya tiene endpoints funcionales:
-```
-POST /api/v1/auth/register  →  { email, password, name, organizationName }
-POST /api/v1/auth/login     →  { email, password }
-```
+**Opción A — Mediante la UI** (recomendado):
+Abre la app en el navegador → aparece el login → tab "Crear cuenta" → completa el formulario.
 
-Falta crear `LoginPage.tsx` que:
-- Muestre un form de registro/login
-- Guarde el token en `localStorage`
-- Redirija al dashboard
-
-### 2. Enviar JWT en peticiones
-
-`apps/frontend/src/lib/api.ts` actualmente no envía `Authorization`. Cambiar a:
-
-```typescript
-const token = localStorage.getItem('token');
-headers: { 
-  'Content-Type': 'application/json',
-  ...(token ? { Authorization: `Bearer ${token}` } : {})
-}
-```
-
-### 3. Seed de datos para probar rápido
-
+**Opción B — Script de seed**:
 ```bash
-# Crear cuenta
+cd apps/backend
+# Asegúrate de tener DATABASE_URL en .env
+npx ts-node prisma/seed-admin.ts
+```
+Creará el usuario:
+- Email: `admin@contentai.app`
+- Password: `ContentAI2025!`
+
+**Opción C — Mediante curl** (si el backend está levantado):
+```bash
 curl -X POST http://localhost:4000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@test.com","password":"test1234","name":"Admin","organizationName":"Test Agency"}'
+```
 
-# Crear cliente de prueba (con el token recibido)
+### 2. Seed de contenido de prueba
+
+```bash
+# Crear cliente de prueba (usa el token del registro)
 curl -X POST http://localhost:4000/api/v1/clients \
   -H "Authorization: Bearer <TOKEN>" \
   -H "Content-Type: application/json" \
@@ -387,8 +379,8 @@ GEMINI_API_KEY=<opcional>
 
 **Backend:**
 ```
-Build: npm install && npx prisma@5 generate && npm run build
-Start: npx prisma@5 migrate deploy && npm run start:prod
+Build: npm install && npx prisma generate && npm run build
+Start: npx prisma migrate deploy && npm run start:prod
 ```
 
 **Frontend:**
