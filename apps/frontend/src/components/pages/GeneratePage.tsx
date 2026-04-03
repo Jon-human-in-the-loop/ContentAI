@@ -53,15 +53,6 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Inyectar Puter.js para usar Grok de forma gratuita
-    if (!(window as any).puter && !document.getElementById('puter-script')) {
-      const script = document.createElement('script');
-      script.id = 'puter-script';
-      script.src = 'https://js.puter.com/v2/';
-      script.async = true;
-      document.head.appendChild(script);
-    }
-
     api('/clients')
       .then(data => setClients(data || []))
       .catch(() => {});
@@ -274,14 +265,20 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
 
                         setIsGeneratingIdea(true);
                         try {
-                          if ((window as any).puter?.ai?.chat) {
-                            const instruction = `Actúa como un experto trafficker y copywriter armando un prompt para ${clientName}. Su nicho es: ${industry}.${toneInstruction} Escribe una idea de prompt directo y agresivo, cuestionando las métricas de sus clientes potenciales. Ejemplo de estructura: "Habla sobre los 3 errores más comunes que cometen las tiendas online al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra Auditoría gratuita. Menciona un dato duro inventado muy creíble como que el CPC subió un 25% este año." Devuelve UNICAMENTE el texto del prompt sin introducciones ni comillas corporativas, de máximo 5 renglones.`;
-                            
-                            const response = await (window as any).puter.ai.chat(instruction, { model: 'x-ai/grok-4-1-fast' });
-                            setBrief(response?.message?.content || response);
-                          } else {
-                            throw new Error("Puter SDK no está listo");
-                          }
+                          const instruction = `Actúa como un experto trafficker y copywriter armando un prompt para ${clientName}. Su nicho es: ${industry}.${toneInstruction} Escribe una idea de prompt directo y agresivo, cuestionando las métricas de sus clientes potenciales. Ejemplo de estructura: "Habla sobre los 3 errores más comunes que cometen las tiendas online al hacer publicidad en Meta Ads. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra Auditoría gratuita. Menciona un dato duro inventado muy creíble como que el CPC subió un 25% este año." Devuelve UNICAMENTE el texto del prompt sin introducciones ni comillas corporativas, de máximo 5 renglones.`;
+                          
+                          const response = await fetch('https://text.pollinations.ai/openai', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              messages: [{ role: 'user', content: instruction }],
+                              seed: Math.floor(Math.random() * 100000)
+                            })
+                          });
+                          
+                          if (!response.ok) throw new Error("Falla en el servicio de IA Libre");
+                          const textData = await response.text();
+                          setBrief(textData);
                         } catch (err) {
                           console.log("Fallback a prompt hardcodeado", err);
                           setBrief(`Habla sobre los 3 errores más comunes que cometen los prospectos de ${clientName} en el nicho de ${industry}. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición subió drásticamente este año.`);
@@ -292,10 +289,10 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                       disabled={isGeneratingIdea}
                       className="text-[10px] text-violet-600 font-medium hover:text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                     >
-                      {isGeneratingIdea ? '✨ Pensando...' : '🪄 Dame una idea (Grok AI)'}
+                      {isGeneratingIdea ? '✨ Pensando...' : '🪄 Dame una idea (Asistente AI)'}
                     </button>
                   </div>
-                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ Creado por Grok AI</span>
+                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ IA Copywriter</span>
                 </div>
                 <Textarea
                   value={brief}
