@@ -2,12 +2,14 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../database/prisma.service';
+import { EmailService } from '../notifications/email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private email: EmailService,
   ) {}
 
   async register(data: {
@@ -47,6 +49,9 @@ export class AuthService {
     });
 
     const token = this.generateToken(result.user.id, result.org.id, 'OWNER');
+
+    // Send welcome email (fire-and-forget)
+    this.email.sendWelcome(result.user.email, result.user.name, result.org.name).catch(() => {});
 
     return {
       user: {

@@ -9,6 +9,7 @@ import { ContentPage } from '@/components/pages/ContentPage';
 import { CalendarPage } from '@/components/pages/CalendarPage';
 import { AnalyticsPage } from '@/components/pages/AnalyticsPage';
 import { SettingsPage } from '@/components/pages/SettingsPage';
+import { ConfigPage } from '@/components/pages/ConfigPage';
 import { getSession, clearSession, AuthSession } from '@/lib/auth';
 
 export interface PageContext {
@@ -64,6 +65,7 @@ export default function Home() {
       case 'calendar': return <CalendarPage />;
       case 'analytics': return <AnalyticsPage />;
       case 'settings': return <SettingsPage />;
+      case 'config': return <ConfigPage />;
       default: return <DashboardPage />;
     }
   };
