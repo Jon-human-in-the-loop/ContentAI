@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -44,6 +45,16 @@ export class ContentController {
   async getRequests(@Request() req, @Query('clientId') clientId?: string) {
     const orgId = req.user.orgId;
     return this.contentService.getRequests(orgId, clientId);
+  }
+
+  /**
+   * DELETE /api/v1/content/requests/:id
+   * Delete a content request (e.g. if stuck)
+   */
+  @Delete('requests/:id')
+  async deleteRequest(@Request() req, @Param('id') id: string) {
+    const orgId = req.user.orgId;
+    return this.contentService.deleteRequest(orgId, id);
   }
 
   /**

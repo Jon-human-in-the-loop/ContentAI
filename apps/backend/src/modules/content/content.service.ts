@@ -117,6 +117,20 @@ export class ContentService {
   }
 
   /**
+   * Delete a content request (useful for cleaning up stuck requests)
+   */
+  async deleteRequest(orgId: string, requestId: string) {
+    const request = await this.prisma.contentRequest.findFirst({
+      where: { id: requestId, orgId },
+    });
+    if (!request) throw new NotFoundException('Request not found');
+
+    return this.prisma.contentRequest.delete({
+      where: { id: requestId },
+    });
+  }
+
+  /**
    * Get a specific content piece with full details
    */
   async getPiece(orgId: string, pieceId: string) {

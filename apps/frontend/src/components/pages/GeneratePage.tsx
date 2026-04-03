@@ -249,13 +249,25 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
               </div>
 
               <div>
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
+                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">✦ Método C.O.P.</span>
+                </div>
                 <Textarea
                   value={brief}
                   onChange={(e) => setBrief(e.target.value)}
-                  placeholder="Describí qué contenido querés generar. Ej: Campaña de lanzamiento del nuevo menú de primavera..."
-                  className="mt-1.5 min-h-[120px]"
+                  placeholder="Ej: [Contexto] Habla sobre los 3 errores más comunes en Meta Ads hoy. [Objetivo] Invitarlos a agendar la auditoría gratuita. [Particularidad] Menciona que el CPC subió un 25% este año."
+                  className="mt-1.5 min-h-[120px] resize-y"
                 />
+                <div className="mt-2 text-[11px] text-muted-foreground leading-relaxed bg-slate-50 border border-slate-100 p-2.5 rounded-md">
+                  <span className="font-medium text-slate-700 block mb-1">💡 Tips para un mejor resultado:</span>
+                  <ul className="list-disc pl-3 space-y-0.5 text-slate-500">
+                    <li><strong>Contexto:</strong> Di de qué trata la pieza exactamente.</li>
+                    <li><strong>Objetivo:</strong> Cuál es el llamado a la acción (CTA) deseado.</li>
+                    <li><strong>Particularidad:</strong> Algún dato clave, ángulo único o promoción.</li>
+                    <li className="text-violet-600/80">No es necesario repetir el perfil o tono del cliente, la IA ya lo sabe.</li>
+                  </ul>
+                </div>
               </div>
 
               <div className="space-y-4 pt-2">
