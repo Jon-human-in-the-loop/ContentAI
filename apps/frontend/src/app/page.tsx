@@ -9,17 +9,13 @@ import { ContentPage } from '@/components/pages/ContentPage';
 import { CalendarPage } from '@/components/pages/CalendarPage';
 import { AnalyticsPage } from '@/components/pages/AnalyticsPage';
 import { SettingsPage } from '@/components/pages/SettingsPage';
+import { ConfigPage } from '@/components/pages/ConfigPage';
 import { getSession, clearSession, AuthSession } from '@/lib/auth';
 
-const pages: Record<string, React.ComponentType> = {
-  dashboard: DashboardPage,
-  clients: ClientsPage,
-  generate: GeneratePage,
-  content: ContentPage,
-  calendar: CalendarPage,
-  analytics: AnalyticsPage,
-  settings: SettingsPage,
-};
+export interface PageContext {
+  clientId?: string;
+  pieceId?: string;
+}
 
 const DEMO_SESSION: AuthSession = {
   token: '',
@@ -29,35 +25,62 @@ const DEMO_SESSION: AuthSession = {
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [pageContext, setPageContext] = useState<PageContext>({});
   const [session, setSession] = useState<AuthSession>(DEMO_SESSION);
 
-  // If a real session exists in localStorage, use it instead
   useEffect(() => {
     const existing = getSession();
-    if (existing) {
-      setSession(existing as AuthSession);
-    }
+    if (existing) setSession(existing as AuthSession);
   }, []);
+
+  // Cross-page navigation via custom event: navigate({ page: 'generate', clientId: '...' })
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ page: string } & PageContext>).detail;
+      const { page, ...ctx } = detail;
+      setCurrentPage(page);
+      setPageContext(ctx);
+    };
+    window.addEventListener('contentai:navigate', handler);
+    return () => window.removeEventListener('contentai:navigate', handler);
+  }, []);
+
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+    setPageContext({});
+  };
 
   const handleLogout = () => {
     clearSession();
     setSession(DEMO_SESSION);
     setCurrentPage('dashboard');
+    setPageContext({});
   };
 
-  const PageComponent = pages[currentPage] || DashboardPage;
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'clients': return <ClientsPage />;
+      case 'generate': return <GeneratePage initialClientId={pageContext.clientId} />;
+      case 'content': return <ContentPage />;
+      case 'calendar': return <CalendarPage />;
+      case 'analytics': return <AnalyticsPage />;
+      case 'settings': return <SettingsPage />;
+      case 'config': return <ConfigPage />;
+      default: return <DashboardPage />;
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar
         currentPage={currentPage}
-        onNavigate={setCurrentPage}
+        onNavigate={handleNavigate}
         user={session.user}
         organization={session.organization}
         onLogout={handleLogout}
       />
       <main className="flex-1 p-8 overflow-auto max-h-screen">
-        <PageComponent />
+        {renderPage()}
       </main>
     </div>
   );

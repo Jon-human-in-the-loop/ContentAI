@@ -40,6 +40,11 @@ export function ContentPage() {
   // Approve action
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
+  // Edit modal
+  const [editingPiece, setEditingPiece] = useState<ContentPiece | null>(null);
+  const [editForm, setEditForm] = useState({ caption: '', hashtags: '' });
+  const [editSaving, setEditSaving] = useState(false);
+
   // Schedule modal
   const [schedulingPiece, setSchedulingPiece] = useState<ContentPiece | null>(null);
   const [socialAccounts, setSocialAccounts] = useState<SocialAccount[]>([]);
@@ -150,6 +155,35 @@ export function ContentPage() {
       setScheduleError(err.message || 'Error al programar');
     } finally {
       setScheduling(false);
+    }
+  };
+
+  const openEdit = (piece: ContentPiece) => {
+    setEditingPiece(piece);
+    setEditForm({ caption: piece.caption || '', hashtags: (piece.hashtags || []).join(', ') });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPiece) return;
+    setEditSaving(true);
+    try {
+      await api(`/content/pieces/${editingPiece.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          caption: editForm.caption,
+          hashtags: editForm.hashtags ? editForm.hashtags.split(',').map(h => h.trim().replace(/^#/, '')).filter(Boolean) : [],
+        }),
+      });
+      setPieces(prev => prev.map(p =>
+        p.id === editingPiece.id
+          ? { ...p, caption: editForm.caption, hashtags: editForm.hashtags ? editForm.hashtags.split(',').map(h => h.trim().replace(/^#/, '')).filter(Boolean) : [] }
+          : p
+      ));
+      setEditingPiece(null);
+    } catch (err: any) {
+      console.error('Edit failed:', err);
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -273,7 +307,7 @@ export function ContentPage() {
                 <div className="flex items-center gap-1.5">
                   {piece.status === 'DRAFT' && (
                     <>
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">Editar</Button>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openEdit(piece)}>Editar</Button>
                       <Button
                         size="sm"
                         className="h-6 text-[10px] px-2 bg-emerald-500 text-white hover:bg-emerald-600"
@@ -313,6 +347,44 @@ export function ContentPage() {
         <div className="text-center py-12">
           <p className="text-muted-foreground">No se encontraron piezas con esos filtros</p>
         </div>
+      )}
+
+      {/* ── Edit Modal ── */}
+      {editingPiece && typeof window !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }} onClick={() => setEditingPiece(null)}>
+          <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+              <h2 className="text-lg font-semibold mb-0.5">Editar pieza</h2>
+              <p className="text-xs text-muted-foreground mb-5">{editingPiece.clientName} · {editingPiece.type}</p>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-xs">Caption</Label>
+                  <textarea
+                    className="mt-1 w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-violet-400 resize-none"
+                    value={editForm.caption}
+                    onChange={e => setEditForm(f => ({ ...f, caption: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Hashtags (separados por coma)</Label>
+                  <input
+                    className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-violet-400"
+                    value={editForm.hashtags}
+                    onChange={e => setEditForm(f => ({ ...f, hashtags: e.target.value }))}
+                    placeholder="fitness, salud, bienestar"
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" className="flex-1 text-sm h-9" onClick={() => setEditingPiece(null)}>Cancelar</Button>
+                  <Button className="flex-1 text-sm h-9 bg-gradient-to-r from-violet-500 to-violet-600 text-white" onClick={handleSaveEdit} disabled={editSaving}>
+                    {editSaving ? 'Guardando...' : 'Guardar cambios'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Schedule Modal (portal) ── */}

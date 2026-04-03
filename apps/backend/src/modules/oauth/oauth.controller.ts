@@ -1,8 +1,10 @@
-import { Controller, Get, Query, Param, Res, Request, Logger } from '@nestjs/common';
+import { Controller, Get, Query, Param, Res, Request, Logger, Inject } from '@nestjs/common';
 import { Response } from 'express';
 import { OAuthService } from './oauth.service';
 import { ConfigService } from '@nestjs/config';
 import { Public } from '../../common/decorators/public.decorator';
+import { REDIS_CLIENT } from '../../config/redis.module';
+import type { Redis } from 'ioredis';
 
 @Controller('oauth')
 export class OAuthController {
@@ -11,6 +13,7 @@ export class OAuthController {
   constructor(
     private readonly oauthService: OAuthService,
     private readonly config: ConfigService,
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
   ) {}
 
   /**
@@ -38,9 +41,9 @@ export class OAuthController {
       return res.status(400).json({ message: 'clientId query param is required' });
     }
 
-    // Generate random state for CSRF protection
-    const state = Math.random().toString(36).substring(2, 15);
-    // TODO: Store state in Redis for verification in callback
+    // Generate random state for CSRF protection and store in Redis (10 min TTL)
+    const state = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    await this.redis.set(`oauth:state:${state}`, clientId, 'EX', 600);
 
     const authUrl = this.oauthService.getAuthorizationUrl(platform, clientId, state);
 
@@ -78,11 +81,20 @@ export class OAuthController {
       return res.redirect(`${frontendUrl}?settings=true&oauth=error&platform=${platform}&reason=missing_params`);
     }
 
-    // Extract clientId from state (format: clientId:randomState)
-    const [clientId] = state.split(':');
-    if (!clientId) {
+    // Extract and validate state: format is clientId:randomPart
+    const colonIdx = state.indexOf(':');
+    const randomPart = colonIdx >= 0 ? state.slice(colonIdx + 1) : state;
+    const clientId = colonIdx >= 0 ? state.slice(0, colonIdx) : null;
+
+    // Verify state exists in Redis (CSRF protection)
+    const storedClientId = await this.redis.get(`oauth:state:${randomPart}`);
+    if (!storedClientId || (clientId && storedClientId !== clientId)) {
+      this.logger.warn(`OAuth CSRF check failed for ${platform}: invalid or expired state`);
       return res.redirect(`${frontendUrl}?settings=true&oauth=error&platform=${platform}&reason=invalid_state`);
     }
+    await this.redis.del(`oauth:state:${randomPart}`);
+
+    const resolvedClientId = storedClientId;
 
     // Exchange code for tokens
     const tokens = await this.oauthService.exchangeCodeForTokens(platform, code);
@@ -92,9 +104,9 @@ export class OAuthController {
     }
 
     // Save encrypted tokens
-    await this.oauthService.saveTokens(clientId, platform, tokens);
+    await this.oauthService.saveTokens(resolvedClientId, platform, tokens);
 
-    this.logger.log(`OAuth flow completed for ${platform}, client ${clientId}`);
+    this.logger.log(`OAuth flow completed for ${platform}, client ${resolvedClientId}`);
     return res.redirect(`${frontendUrl}?settings=true&oauth=success&platform=${platform}`);
   }
 }

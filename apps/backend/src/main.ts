@@ -5,7 +5,7 @@ import { AppModule } from './app.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   const config = app.get(ConfigService);
   const reflector = app.get(Reflector);
 

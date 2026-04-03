@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,11 @@ export function ClientsPage() {
   const [form, setForm] = useState<NewClientForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState<NewClientForm>(emptyForm);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Notebook state
   const [notebookEntries, setNotebookEntries] = useState<NotebookEntry[]>([]);
@@ -161,6 +167,68 @@ export function ClientsPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const openEditDialog = (client: Client) => {
+    setEditForm({
+      name: client.name,
+      industry: client.industry,
+      website: '',
+      description: '',
+      toneOfVoice: client.toneOfVoice || '',
+      targetAudience: '',
+      primaryColor: client.primaryColor,
+      secondaryColor: client.secondaryColor,
+      font: '',
+      keywords: '',
+      prohibitedWords: '',
+      platforms: client.platforms || ['INSTAGRAM'],
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedClient || !editForm.name.trim() || !editForm.industry.trim()) return;
+    setEditSaving(true);
+    try {
+      const payload = {
+        name: editForm.name.trim(),
+        industry: editForm.industry.trim(),
+        website: editForm.website.trim() || undefined,
+        description: editForm.description.trim() || undefined,
+        branding: {
+          primaryColor: editForm.primaryColor,
+          secondaryColor: editForm.secondaryColor,
+          font: editForm.font.trim() || undefined,
+          toneOfVoice: editForm.toneOfVoice.trim() || undefined,
+          targetAudience: editForm.targetAudience.trim() || undefined,
+          keywords: editForm.keywords ? editForm.keywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+          prohibitedWords: editForm.prohibitedWords ? editForm.prohibitedWords.split(',').map(w => w.trim()).filter(Boolean) : [],
+        },
+        platforms: editForm.platforms,
+      };
+      const updated = await api(`/clients/${selectedClient.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      const mapped: Client = {
+        ...selectedClient,
+        name: updated.name,
+        industry: updated.industry || '',
+        primaryColor: updated.branding?.primaryColor || editForm.primaryColor,
+        secondaryColor: updated.branding?.secondaryColor || editForm.secondaryColor,
+        toneOfVoice: updated.branding?.toneOfVoice || '',
+        platforms: editForm.platforms,
+      };
+      setClients(prev => prev.map(c => c.id === selectedClient.id ? mapped : c));
+      setSelectedClient(mapped);
+      setEditDialogOpen(false);
+    } catch (err) {
+      console.error('Failed to update client:', err);
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleGenerateContent = (clientId: string) => {
+    window.dispatchEvent(new CustomEvent('contentai:navigate', { detail: { page: 'generate', clientId } }));
   };
 
   // Load notebook when a client is selected
@@ -488,6 +556,88 @@ export function ClientsPage() {
         ))}
       </div>
 
+      {/* ── Edit Client Dialog ── */}
+      {editDialogOpen && selectedClient && typeof window !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }} onClick={() => setEditDialogOpen(false)}>
+          <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+              <h2 className="text-lg font-semibold mb-0.5">Editar cliente: {selectedClient.name}</h2>
+              <p className="text-xs text-muted-foreground mb-5">Actualizá los datos de la marca</p>
+
+              <div className="space-y-5">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Datos básicos</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label className="text-xs">Nombre *</Label><Input className="mt-1" value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} /></div>
+                    <div><Label className="text-xs">Rubro *</Label><Input className="mt-1" value={editForm.industry} onChange={e => setEditForm(p => ({ ...p, industry: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div><Label className="text-xs">Sitio web</Label><Input placeholder="https://..." className="mt-1" value={editForm.website} onChange={e => setEditForm(p => ({ ...p, website: e.target.value }))} /></div>
+                    <div><Label className="text-xs">Fuente corporativa</Label><Input placeholder="Ej: Montserrat" className="mt-1" value={editForm.font} onChange={e => setEditForm(p => ({ ...p, font: e.target.value }))} /></div>
+                  </div>
+                  <div className="mt-3"><Label className="text-xs">Descripción</Label><Textarea className="mt-1" rows={2} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} /></div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Identidad de marca</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Color primario</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input type="color" value={editForm.primaryColor} onChange={e => setEditForm(p => ({ ...p, primaryColor: e.target.value }))} className="w-9 h-9 rounded-lg border cursor-pointer p-0.5 bg-white" />
+                        <Input className="flex-1" value={editForm.primaryColor} onChange={e => setEditForm(p => ({ ...p, primaryColor: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Color secundario</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input type="color" value={editForm.secondaryColor} onChange={e => setEditForm(p => ({ ...p, secondaryColor: e.target.value }))} className="w-9 h-9 rounded-lg border cursor-pointer p-0.5 bg-white" />
+                        <Input className="flex-1" value={editForm.secondaryColor} onChange={e => setEditForm(p => ({ ...p, secondaryColor: e.target.value }))} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 h-2 rounded-full" style={{ background: `linear-gradient(to right, ${editForm.primaryColor}, ${editForm.secondaryColor})` }} />
+                </div>
+
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Voz y audiencia</p>
+                  <div className="space-y-3">
+                    <div><Label className="text-xs">Tono de voz</Label><Textarea className="mt-1" rows={2} value={editForm.toneOfVoice} onChange={e => setEditForm(p => ({ ...p, toneOfVoice: e.target.value }))} /></div>
+                    <div><Label className="text-xs">Público objetivo</Label><Input className="mt-1" value={editForm.targetAudience} onChange={e => setEditForm(p => ({ ...p, targetAudience: e.target.value }))} /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label className="text-xs">Palabras clave</Label><Input placeholder="healthy, organic" className="mt-1" value={editForm.keywords} onChange={e => setEditForm(p => ({ ...p, keywords: e.target.value }))} /></div>
+                      <div><Label className="text-xs">Palabras prohibidas</Label><Input placeholder="barato, gratis" className="mt-1" value={editForm.prohibitedWords} onChange={e => setEditForm(p => ({ ...p, prohibitedWords: e.target.value }))} /></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Plataformas activas</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {ALL_PLATFORMS.map(p => (
+                      <button key={p} type="button"
+                        onClick={() => setEditForm(prev => ({ ...prev, platforms: prev.platforms.includes(p) ? prev.platforms.filter(x => x !== p) : [...prev.platforms, p] }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${editForm.platforms.includes(p) ? 'border-violet-400 bg-violet-50 text-violet-700 font-medium' : 'border-border bg-background text-muted-foreground hover:bg-muted/50'}`}
+                      >
+                        <span>{platformIcons[p]}</span><span className="text-xs">{platformLabels[p]}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+                  <Button className="flex-1 bg-gradient-to-r from-violet-500 to-violet-600 text-white h-11 font-medium" onClick={handleUpdate} disabled={editSaving || !editForm.name.trim() || !editForm.industry.trim()}>
+                    {editSaving ? 'Guardando...' : 'Guardar cambios'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Client detail panel */}
       {selectedClient && (
         <Card className="border-0 shadow-lg animate-in">
@@ -507,8 +657,8 @@ export function ClientsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm">Editar</Button>
-                <Button size="sm" className="bg-gradient-to-r from-violet-500 to-violet-600 text-white">
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(selectedClient)}>Editar</Button>
+                <Button size="sm" className="bg-gradient-to-r from-violet-500 to-violet-600 text-white" onClick={() => handleGenerateContent(selectedClient.id)}>
                   Generar contenido
                 </Button>
               </div>
