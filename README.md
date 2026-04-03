@@ -76,7 +76,12 @@ ContentAI/
 └── README.md                  # Este archivo
 ```
 
----
+## Frontend (`apps/frontend/.env.local`)
+Partiendo de `apps/frontend/.env.example`:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
 
 ## Levantar en local (desarrollo)
 
