@@ -2,6 +2,7 @@ import { Controller, Get, Query, Param, Res, Request, Logger } from '@nestjs/com
 import { Response } from 'express';
 import { OAuthService } from './oauth.service';
 import { ConfigService } from '@nestjs/config';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('oauth')
 export class OAuthController {
@@ -18,7 +19,7 @@ export class OAuthController {
    */
   @Get('accounts')
   async getAccounts(@Request() req, @Query('clientId') clientId: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     if (!clientId) return [];
     return this.oauthService.getConnectedAccounts(orgId, clientId);
   }
@@ -57,6 +58,7 @@ export class OAuthController {
    * GET /api/v1/oauth/:platform/callback?code=xxx&state=clientId:randomState
    * Receives the callback from the OAuth provider
    */
+  @Public()
   @Get(':platform/callback')
   async callback(
     @Param('platform') platform: string,

@@ -24,7 +24,7 @@ export class NotebookController {
     @Param('clientId') clientId: string,
     @Body() body: { title: string; content: string; category?: string },
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.notebookService.createEntry(orgId, clientId, body);
   }
 
@@ -37,7 +37,7 @@ export class NotebookController {
     @Param('clientId') clientId: string,
     @Query('category') category?: string,
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.notebookService.getEntries(orgId, clientId, category);
   }
 
@@ -50,7 +50,7 @@ export class NotebookController {
     @Param('id') id: string,
     @Body() body: { title?: string; content?: string; category?: string },
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.notebookService.updateEntry(orgId, id, body);
   }
 
@@ -59,7 +59,7 @@ export class NotebookController {
    */
   @Delete('entries/:id')
   async deleteEntry(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.notebookService.deleteEntry(orgId, id);
   }
 

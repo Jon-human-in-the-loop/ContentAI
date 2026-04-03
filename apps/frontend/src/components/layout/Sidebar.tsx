@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
+import { AuthUser, AuthOrg } from '@/lib/auth';
 
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
+  user: AuthUser;
+  organization: AuthOrg;
+  onLogout: () => void;
 }
 
 const navItems = [
@@ -17,29 +21,18 @@ const navItems = [
   { id: 'settings', label: 'Configuración', icon: '⚙' },
 ];
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
-  const [org, setOrg] = useState({ 
-    name: 'Cargando...', 
-    plan: '...', 
-    tokensUsed: 0, 
-    monthlyTokenLimit: 1000000 
-  });
+export function Sidebar({ currentPage, onNavigate, user, organization, onLogout }: SidebarProps) {
+  const [orgStats, setOrgStats] = useState({ tokensUsed: 0, monthlyTokenLimit: 1000000, plan: organization.plan || 'STARTER' });
 
   useEffect(() => {
-    async function loadOrg() {
-      try {
-        const data = await api('/settings/organization/current');
-        setOrg(data);
-      } catch (err) {
-        console.error('Failed to load org data for sidebar:', err);
-      }
-    }
-    loadOrg();
+    api('/settings/organization/current')
+      .then(data => setOrgStats({ tokensUsed: data.tokensUsed, monthlyTokenLimit: data.monthlyTokenLimit, plan: data.plan }))
+      .catch(() => {});
   }, []);
 
   const tokenPercent = Math.min(
-    100, 
-    org.monthlyTokenLimit > 0 ? (org.tokensUsed / org.monthlyTokenLimit) * 100 : 0
+    100,
+    orgStats.monthlyTokenLimit > 0 ? (orgStats.tokensUsed / orgStats.monthlyTokenLimit) * 100 : 0
   );
 
   const formatTokens = (num: number) => {
@@ -94,25 +87,46 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-5 mx-3 mb-4 rounded-xl bg-white/[0.05] border border-white/[0.06]">
-        <div className="flex items-center gap-2.5 mb-2">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-violet-500 flex items-center justify-center text-[11px] font-bold text-white">
-            {org.name.charAt(0).toUpperCase()}
+      {/* User + org footer */}
+      <div className="px-3 mb-3">
+        <div className="px-4 py-4 rounded-xl bg-white/[0.05] border border-white/[0.06]">
+          {/* Org + token bar */}
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-violet-500 flex items-center justify-center text-[11px] font-bold text-white shrink-0">
+              {organization.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[12.5px] text-white/80 font-medium truncate">{organization.name}</div>
+              <div className="text-[10.5px] text-white/30">Plan {orgStats.plan}</div>
+            </div>
+          </div>
+          <div className="w-full bg-white/10 rounded-full h-1.5">
+            <div
+              className="bg-gradient-to-r from-violet-400 to-emerald-400 h-1.5 rounded-full transition-all duration-1000"
+              style={{ width: `${tokenPercent}%` }}
+            />
+          </div>
+          <div className="text-[10px] text-white/30 mt-1.5">
+            {formatTokens(orgStats.tokensUsed)} / {formatTokens(orgStats.monthlyTokenLimit)} tokens
+          </div>
+        </div>
+
+        {/* User row + logout */}
+        <div className="flex items-center gap-2 mt-2 px-2 py-2 rounded-lg hover:bg-white/[0.04] transition-colors group">
+          <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-white/60 shrink-0">
+            {user.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[12.5px] text-white/80 font-medium truncate">{org.name}</div>
-            <div className="text-[10.5px] text-white/30">Plan {org.plan}</div>
+            <div className="text-[11.5px] text-white/60 truncate">{user.name}</div>
+            <div className="text-[10px] text-white/25 truncate">{user.email}</div>
           </div>
-        </div>
-        <div className="w-full bg-white/10 rounded-full h-1.5 mt-2">
-          <div 
-            className="bg-gradient-to-r from-violet-400 to-emerald-400 h-1.5 rounded-full transition-all duration-1000" 
-            style={{ width: `${tokenPercent}%` }} 
-          />
-        </div>
-        <div className="text-[10px] text-white/30 mt-1.5">
-          {formatTokens(org.tokensUsed)} / {formatTokens(org.monthlyTokenLimit)} tokens usados
+          <button
+            onClick={onLogout}
+            title="Cerrar sesión"
+            className="text-white/20 hover:text-red-400 transition-colors text-xs opacity-0 group-hover:opacity-100"
+          >
+            ⏻
+          </button>
         </div>
       </div>
     </aside>

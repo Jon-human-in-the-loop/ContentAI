@@ -94,7 +94,7 @@ export class VideoController {
       contentPieceId?: string;
     },
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
 
     if (!this.creatify.isConfigured()) {
       return { success: false, message: 'Creatify API not configured' };

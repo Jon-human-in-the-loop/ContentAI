@@ -10,31 +10,31 @@ export class ClientsController {
 
   @Post()
   async create(@Request() req, @Body() body: any) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.clientsService.create(orgId, body);
   }
 
   @Get()
   async findAll(@Request() req) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.clientsService.findAll(orgId);
   }
 
   @Get(':id')
   async findOne(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.clientsService.findOne(orgId, id);
   }
 
   @Put(':id')
   async update(@Request() req, @Param('id') id: string, @Body() body: any) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.clientsService.update(orgId, id, body);
   }
 
   @Delete(':id')
   async delete(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.clientsService.delete(orgId, id);
   }
 }

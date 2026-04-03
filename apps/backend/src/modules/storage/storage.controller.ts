@@ -24,7 +24,7 @@ export class StorageController {
     @Query('clientId') clientId?: string,
     @Query('pieceId') pieceId?: string,
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     if (pieceId) {
       return this.storageService.getAssetsForPiece(orgId, pieceId);
     }
@@ -55,7 +55,7 @@ export class StorageController {
    */
   @Delete('assets/:id')
   async deleteAsset(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     const deleted = await this.storageService.deleteAsset(orgId, id);
     return { success: deleted };
   }
