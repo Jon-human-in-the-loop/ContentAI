@@ -278,18 +278,17 @@ Requisitos:
 
 Devuelve UNICAMENTE el texto del prompt en tu idioma nativo (español) sin introducciones ni comillas corporativas, estructurado de forma concisa en máximo 5 renglones.`;
                           
-                          const response = await fetch('https://text.pollinations.ai/openai', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              messages: [{ role: 'user', content: instruction }],
-                              seed: Math.floor(Math.random() * 100000)
-                            })
-                          });
+                          const randomSeed = Math.floor(Math.random() * 100000);
+                          const encodedInstruction = encodeURIComponent(instruction);
+                          const response = await fetch(`https://text.pollinations.ai/${encodedInstruction}?seed=${randomSeed}`);
                           
-                          if (!response.ok) throw new Error("Falla en el servicio de IA Libre");
+                          if (!response.ok) throw new Error(`Falla en el servicio de IA Libre: ${response.status}`);
                           const textData = await response.text();
-                          setBrief(textData);
+                          if (textData) {
+                            setBrief(textData);
+                          } else {
+                            throw new Error("Respuesta de IA vacía");
+                          }
                         } catch (err) {
                           console.log("Fallback a prompt hardcodeado", err);
                           setBrief(`Habla sobre los 3 errores más comunes que cometen los prospectos de ${clientName} en el nicho de ${industry}. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición subió drásticamente este año.`);
