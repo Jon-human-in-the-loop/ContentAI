@@ -7,13 +7,13 @@ export class AnalyticsController {
 
   @Get('dashboard')
   async getDashboard(@Request() req) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.analyticsService.getDashboard(orgId);
   }
 
   @Get('costs')
   async getCostHistory(@Request() req, @Query('days') days?: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.analyticsService.getCostHistory(orgId, parseInt(days || '30'));
   }
 }

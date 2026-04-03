@@ -31,8 +31,8 @@ export class ContentController {
   @Post('requests')
   // @Roles('OWNER', 'ADMIN', 'EDITOR')
   async createRequest(@Request() req, @Body() dto: CreateContentRequestDto) {
-    const orgId = req.user?.orgId || 'demo-org'; // TODO: from JWT
-    const userId = req.user?.id || 'demo-user';
+    const orgId = req.user.orgId; 
+    const userId = req.user.id;
     return this.contentService.createRequest(orgId, userId, dto);
   }
 
@@ -42,7 +42,7 @@ export class ContentController {
    */
   @Get('requests')
   async getRequests(@Request() req, @Query('clientId') clientId?: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.contentService.getRequests(orgId, clientId);
   }
 
@@ -52,7 +52,7 @@ export class ContentController {
    */
   @Get('pieces/:id')
   async getPiece(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.contentService.getPiece(orgId, id);
   }
 
@@ -67,7 +67,7 @@ export class ContentController {
     @Param('id') id: string,
     @Body() dto: UpdateContentPieceDto,
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.contentService.updatePiece(orgId, id, dto);
   }
 
@@ -77,7 +77,7 @@ export class ContentController {
   @Patch('pieces/:id/approve')
   // @Roles('OWNER', 'ADMIN')
   async approvePiece(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.contentService.approvePiece(orgId, id);
   }
 
@@ -86,7 +86,7 @@ export class ContentController {
    */
   @Patch('pieces/:id/reject')
   async rejectPiece(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.contentService.rejectPiece(orgId, id);
   }
 
@@ -96,7 +96,7 @@ export class ContentController {
    */
   @Post('pieces/:id/image-prompt')
   async generateImagePrompt(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     const piece = await this.contentService.getPiece(orgId, id);
 
     const clientName = piece.client?.name || 'Brand';
@@ -167,7 +167,7 @@ Write the perfect image generation prompt:`;
     @Param('id') id: string,
     @Body() body: { prompt?: string },
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     const piece = await this.contentService.getPiece(orgId, id);
 
     // Use the user-provided prompt or fall back to auto-generated
@@ -213,7 +213,7 @@ Write the perfect image generation prompt:`;
    */
   @Get('pieces/:id/media')
   async getPieceMedia(@Request() req, @Param('id') id: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.storageService.getAssetsForPiece(orgId, id);
   }
 }

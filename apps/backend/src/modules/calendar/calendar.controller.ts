@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { CalendarService } from './calendar.service';
 import { GoogleCalendarService } from './google-calendar.service';
+import { Public } from '../../common/decorators/public.decorator';
 
 @Controller('calendar')
 export class CalendarController {
@@ -21,7 +22,7 @@ export class CalendarController {
     @Query('end') end: string,
     @Query('clientId') clientId?: string,
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.calendarService.getCalendarView(
       orgId,
       new Date(start),
@@ -41,7 +42,7 @@ export class CalendarController {
       socialAccountId: string;
     },
   ) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     const result = await this.calendarService.schedulePiece(
       orgId,
       body.contentPieceId,
@@ -67,7 +68,7 @@ export class CalendarController {
 
   @Delete('schedule/:pieceId')
   async unschedule(@Request() req, @Param('pieceId') pieceId: string) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     return this.calendarService.unschedulePiece(orgId, pieceId);
   }
 
@@ -75,14 +76,14 @@ export class CalendarController {
 
   @Get('google/status')
   async googleStatus(@Request() req) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     const connected = await this.googleCalendar.isConnected(orgId);
     return { connected };
   }
 
   @Get('google/authorize')
   googleAuthorize(@Request() req, @Res() res: Response) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     const state = Math.random().toString(36).substring(2, 15);
 
     const authUrl = this.googleCalendar.getAuthorizationUrl(orgId, state);
@@ -97,6 +98,7 @@ export class CalendarController {
     return res.redirect(authUrl);
   }
 
+  @Public()
   @Get('google/callback')
   async googleCallback(
     @Query('code') code: string,
@@ -130,7 +132,7 @@ export class CalendarController {
 
   @Delete('google/disconnect')
   async googleDisconnect(@Request() req) {
-    const orgId = req.user?.orgId || 'demo-org';
+    const orgId = req.user.orgId;
     await this.googleCalendar.disconnect(orgId);
     return { disconnected: true };
   }

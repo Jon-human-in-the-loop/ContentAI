@@ -1,101 +1,79 @@
-# ContentAI 🤖
+# ContentAI
 
-Plataforma SaaS para agencias que necesitan **generar, aprobar, programar y publicar contenido en redes sociales** con IA, manteniendo control de costos por cliente y por organización.
-
-> Estado actual: el frontend está operativo, el backend tiene módulos clave implementados, pero aún requiere hardening para producción inmediata.
+Plataforma SaaS de generación y gestión de contenido para redes sociales, construida para agencias digitales. Genera texto, imágenes y videos con IA, programa publicaciones y gestiona múltiples clientes desde un solo dashboard.
 
 ---
 
-## 1) Qué hace el proyecto hoy
+## ¿Qué hace?
 
-### Funcionalidad de negocio
-- Gestión multi-tenant (organizaciones, usuarios y clientes).
-- Gestión de branding del cliente y Brand Notebook.
-- Generación de contenido con IA (texto, prompts visuales, soporte de imagen/video).
-- Flujo editorial (`DRAFT → APPROVED → SCHEDULED → PUBLISHED`).
-- Scheduling y publicación automática a redes.
-- Gestión de conexiones OAuth (Meta, LinkedIn, X, TikTok, Threads).
-- Métricas/costos de uso de IA.
+Una agencia usa ContentAI para gestionar todos sus clientes desde un mismo lugar:
 
-### Stack técnico
-- **Frontend:** Next.js 14 + React + TypeScript + Tailwind.
-- **Backend:** NestJS + Prisma + PostgreSQL + Redis + BullMQ.
-- **Infra local:** Docker Compose (Postgres, Redis, MinIO, Bull Board).
+1. **Crea un cliente** con su perfil de marca completo (colores, tono de voz, audiencia, Brand Notebook)
+2. **Genera contenido** con un brief de texto → Claude genera captions, hashtags, hooks, scripts, CTAs
+3. **Genera imágenes** con Gemini (el usuario puede editar el prompt antes de generar)
+4. **Genera videos con avatar** usando Creatify Aurora (para Reels y Stories)
+5. **Aprueba** las piezas que le gustan
+6. **Programa** la publicación en Instagram, Facebook, LinkedIn, X
+7. El sistema **publica automáticamente** a la hora programada
 
 ---
 
-## 2) Estructura del monorepo
+## Tech Stack
 
-```text
+| Capa | Tecnología |
+|------|-----------|
+| Frontend | Next.js 14, React, TypeScript, Tailwind CSS |
+| Backend | NestJS, TypeScript, Prisma ORM |
+| Base de datos | PostgreSQL |
+| Cola de trabajos | BullMQ + Redis |
+| Storage de archivos | S3 / MinIO |
+| IA - Texto | Anthropic Claude (Sonnet 4 + Haiku 4.5) |
+| IA - Imágenes | Google Gemini 2.0 Flash |
+| IA - Videos | Creatify Aurora |
+| Redes sociales | Meta Graph API, LinkedIn API, X API v2 |
+| Calendario | Google Calendar API |
+
+---
+
+## Estructura del repositorio
+
+```
 ContentAI/
 ├── apps/
-│   ├── frontend/              # Next.js app
-│   └── backend/               # NestJS API + workers
-├── docker-compose.yml         # Postgres + Redis + MinIO + Bull Board
-├── ARCHITECTURE.md            # Arquitectura detallada
-├── PRODUCTION_GUIDE.md        # Guía funcional/operativa extensa
-└── README.md
-```
-
----
-
-## 3) Requisitos
-
-- Node.js **20.x** recomendado (alineado a Dockerfiles).
-- npm 10+
-- Docker + Docker Compose
-- Cuenta de Anthropic (y opcionalmente Gemini / Creatify)
-- PostgreSQL y Redis (local por compose o gestionados)
-
-> Nota importante: en algunos entornos con proxy y Node 22, `bcrypt` puede fallar al instalar binarios precompilados. Para evitar esto, usa Node 20 y/o build containerizado.
-
----
-
-## 4) Variables de entorno
-
-## Backend (`apps/backend/.env`)
-Partiendo de `apps/backend/.env.example`:
-
-```bash
-PORT=4000
-JWT_SECRET=<super-secret>
-FRONTEND_URL=http://localhost:3000
-DATABASE_URL=postgresql://contentai:contentai_dev@localhost:5432/contentai
-REDIS_URL=redis://localhost:6379
-
-# IA
-ANTHROPIC_API_KEY=...
-GEMINI_API_KEY=...
-
-# Cifrado de tokens OAuth (32 bytes en hex = 64 chars)
-ENCRYPTION_KEY=<64_hex_chars>
-
-# OAuth redes
-META_APP_ID=...
-META_APP_SECRET=...
-LINKEDIN_CLIENT_ID=...
-LINKEDIN_CLIENT_SECRET=...
-TIKTOK_CLIENT_KEY=...
-TIKTOK_CLIENT_SECRET=...
-X_CLIENT_ID=...
-X_CLIENT_SECRET=...
-OAUTH_REDIRECT_BASE=http://localhost:4000
-
-# Google Calendar
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-
-# S3 / MinIO
-S3_ENDPOINT=http://localhost:9000
-S3_REGION=us-east-1
-S3_BUCKET=contentai-media
-S3_ACCESS_KEY=contentai
-S3_SECRET_KEY=contentai_dev
-S3_PUBLIC_URL=http://localhost:9000/contentai-media
-
-# Creatify
-CREATIFY_API_ID=...
-CREATIFY_API_KEY=...
+│   ├── frontend/              # Next.js 14 (puerto 3000)
+│   │   └── src/
+│   │       ├── app/           # Entry point (layout + page.tsx)
+│   │       ├── components/
+│   │       │   ├── pages/     # 7 páginas principales
+│   │       │   ├── layout/    # Sidebar
+│   │       │   └── ui/        # Componentes base
+│   │       └── lib/api.ts     # HTTP client
+│   │
+│   └── backend/               # NestJS (puerto 4000)
+│       ├── prisma/
+│       │   ├── schema.prisma  # Modelo de datos
+│       │   └── migrations/    # Migraciones SQL
+│       └── src/
+│           ├── modules/
+│           │   ├── auth/          # JWT login/registro
+│           │   ├── clients/       # Gestión de clientes
+│           │   ├── notebook/      # Brand Notebook
+│           │   ├── generation/    # Workers IA + BullMQ
+│           │   ├── content/       # Piezas de contenido
+│           │   ├── storage/       # S3/MinIO
+│           │   ├── video/         # Creatify Aurora
+│           │   ├── publishing/    # Publicación a redes
+│           │   ├── calendar/      # Scheduling + Google Calendar
+│           │   ├── oauth/         # OAuth de redes sociales
+│           │   ├── analytics/     # Dashboard de costos
+│           │   ├── settings/      # Configuración
+│           │   └── templates/     # Templates visuales
+│           └── common/            # Constantes, modelos IA, encryption
+│
+├── docker-compose.yml         # PostgreSQL + Redis + MinIO + Bull-Board
+├── PRODUCTION_GUIDE.md        # Manual completo de producción
+├── IMPLEMENTATION_CHECKLIST.md # Checklist de tareas pendientes
+└── README.md                  # Este archivo
 ```
 
 ## Frontend (`apps/frontend/.env.local`)
@@ -105,208 +83,392 @@ Partiendo de `apps/frontend/.env.example`:
 NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
----
+## Levantar en local (desarrollo)
 
-## 5) Levantar entorno local para pruebas
+### Requisitos
 
-### 5.1 Infraestructura
+- Node.js 20+
+- Docker y Docker Compose
+- Una `ANTHROPIC_API_KEY` (mínimo para que funcione la generación)
+
+### Paso 1 — Infraestructura
+
 ```bash
 docker-compose up -d
 ```
 
-Servicios:
-- Postgres: `localhost:5432`
-- Redis: `localhost:6379`
-- MinIO API: `localhost:9000`
-- MinIO Console: `localhost:9001`
-- Bull Board: `localhost:3030`
+Levanta:
+- PostgreSQL en `localhost:5432` (usuario: `contentai`, pass: `contentai_dev`)
+- Redis en `localhost:6379`
+- MinIO en `localhost:9000` (consola en `localhost:9001`, user: `contentai`, pass: `contentai_dev`)
+- Bull-Board (monitor de colas) en `localhost:3030`
 
-### 5.2 Backend
+### Paso 2 — Backend
+
 ```bash
 cd apps/backend
 npm install
-npx prisma generate
-npx prisma migrate deploy
+cp .env.example .env
+```
+
+Editá `.env` con al menos:
+```bash
+JWT_SECRET=cualquier-string-largo-y-random-aqui
+ANTHROPIC_API_KEY=sk-ant-...
+ENCRYPTION_KEY=64-caracteres-hexadecimales-random
+
+# Ya tienen defaults correctos para Docker local:
+# DATABASE_URL se configura automáticamente (ver nota abajo)
+```
+
+> **Nota**: `docker-compose` no inyecta `DATABASE_URL` automáticamente en local. Agregala a `.env`:
+> ```
+> DATABASE_URL=postgresql://contentai:contentai_dev@localhost:5432/contentai
+> REDIS_URL=redis://localhost:6379
+> ```
+
+```bash
+npx prisma@5 generate
+npx prisma@5 migrate dev
 npm run start:dev
 ```
 
-### 5.3 Frontend
+API disponible en `http://localhost:4000`
+
+### Paso 3 — Frontend
+
 ```bash
 cd apps/frontend
 npm install
+cp .env.example .env.local
+# .env.local ya tiene: NEXT_PUBLIC_API_URL=http://localhost:4000
 npm run dev
 ```
 
-App web: `http://localhost:3000`
+App disponible en `http://localhost:3000`
+
+### Primer uso
+
+```bash
+# Crear cuenta de agencia (solo la primera vez):
+curl -X POST http://localhost:4000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "tu@email.com",
+    "password": "tu-password",
+    "name": "Tu Nombre",
+    "organizationName": "Mi Agencia"
+  }'
+```
+
+Guarda el `token` que devuelve. Por ahora el frontend no tiene pantalla de login (ver estado más abajo).
 
 ---
 
-## 6) Build de producción
+## API Reference
 
-### Frontend
+Base URL: `http://localhost:4000/api/v1`
+
+Autenticación: `Authorization: Bearer <token>` en cada request.
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| POST | `/auth/register` | Crear cuenta + organización |
+| POST | `/auth/login` | Login, devuelve JWT |
+| GET | `/clients` | Listar clientes |
+| POST | `/clients` | Crear cliente |
+| PUT | `/clients/:id` | Actualizar cliente |
+| DELETE | `/clients/:id` | Eliminar cliente |
+| POST | `/notebook/:clientId/entries` | Agregar nota al Brand Notebook |
+| GET | `/notebook/:clientId/entries` | Listar notas |
+| PUT | `/notebook/entries/:id` | Editar nota |
+| DELETE | `/notebook/entries/:id` | Eliminar nota |
+| POST | `/content/requests` | Generar contenido (brief + tipos) |
+| GET | `/content/requests` | Listar todas las solicitudes |
+| GET | `/content/pieces/:id` | Ver pieza de contenido |
+| PUT | `/content/pieces/:id` | Editar pieza |
+| PATCH | `/content/pieces/:id/approve` | Aprobar pieza |
+| PATCH | `/content/pieces/:id/reject` | Rechazar pieza |
+| POST | `/content/pieces/:id/image-prompt` | Generar prompt de imagen con Claude |
+| POST | `/content/pieces/:id/generate-image` | Generar imagen con Gemini |
+| GET | `/content/pieces/:id/media` | Listar medios de la pieza |
+| GET | `/calendar` | Vista de calendario (start + end query) |
+| POST | `/calendar/schedule` | Programar publicación |
+| DELETE | `/calendar/schedule/:pieceId` | Desprogramar |
+| GET | `/oauth/accounts?clientId=` | Cuentas sociales conectadas |
+| GET | `/oauth/:platform/authorize?clientId=` | Iniciar OAuth de red social |
+| POST | `/video/generate` | Generar video con Creatify Aurora |
+| GET | `/video/jobs/:id` | Estado del video |
+| GET | `/storage/assets` | Listar archivos en S3 |
+| GET | `/analytics/dashboard` | Métricas del dashboard |
+| GET | `/analytics/costs?days=30` | Histórico de costos |
+
+---
+
+## Variables de entorno
+
+### Backend (`apps/backend/.env`)
+
 ```bash
-cd apps/frontend
-npm run build
-npm run start
+# ── Obligatorio para funcionar ──────────────────────────────
+PORT=4000
+JWT_SECRET=                   # String random largo (>32 chars)
+ANTHROPIC_API_KEY=sk-ant-...  # Para generación de texto + prompts
+ENCRYPTION_KEY=               # 64 chars hex, para encriptar tokens OAuth
+FRONTEND_URL=http://localhost:3000
+
+# ── Base de datos ───────────────────────────────────────────
+DATABASE_URL=postgresql://contentai:contentai_dev@localhost:5432/contentai
+REDIS_URL=redis://localhost:6379
+
+# ── Imágenes (opcional, funciona sin esto) ──────────────────
+GEMINI_API_KEY=AIza...
+
+# ── Videos con avatar (opcional) ───────────────────────────
+CREATIFY_API_ID=
+CREATIFY_API_KEY=
+
+# ── Storage de archivos (opcional, sin S3 no persiste imágenes) ─
+S3_ENDPOINT=                  # Vacío = AWS S3. Para MinIO local: http://localhost:9000
+S3_REGION=us-east-1
+S3_BUCKET=contentai-media
+S3_ACCESS_KEY=contentai       # En MinIO local usa las credenciales de docker-compose
+S3_SECRET_KEY=contentai_dev
+S3_PUBLIC_URL=http://localhost:9000/contentai-media
+
+# ── Redes sociales (cada una es opcional) ───────────────────
+META_APP_ID=                  # Instagram + Facebook
+META_APP_SECRET=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+X_CLIENT_ID=                  # Twitter/X
+X_CLIENT_SECRET=
+TIKTOK_CLIENT_KEY=
+TIKTOK_CLIENT_SECRET=
+
+# ── Google Calendar (opcional) ──────────────────────────────
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+OAUTH_REDIRECT_BASE=http://localhost:4000
 ```
 
-### Backend
+### Frontend (`apps/frontend/.env.local`)
+
 ```bash
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+---
+
+## Estado actual del proyecto
+
+### ✅ Funcional
+
+| Feature | Estado | Notas |
+|---------|--------|-------|
+| Gestión de clientes | ✅ Completo | CRUD + branding completo |
+| Brand Notebook | ✅ Completo | Notas por cliente, contexto para IA |
+| Generación de texto (Claude) | ✅ Completo | POST, REEL, STORY, CAROUSEL |
+| Routing IA (Sonnet/Haiku) | ✅ Completo | Optimización automática de costos |
+| Cache de respuestas | ✅ Completo | Redis (exacto) + PostgreSQL (semántico) |
+| Generación de imágenes (Gemini) | ✅ Completo | Prompt editable antes de generar |
+| Generación de videos (Creatify) | ✅ Completo | Para REEL y STORY |
+| Storage S3/MinIO | ✅ Completo | Imágenes persisten en S3 |
+| Aprobar/rechazar piezas | ✅ Completo | Workflow DRAFT → APPROVED |
+| Programar publicaciones | ✅ Completo | Modal con selector de cuenta + fecha |
+| Publicación automática | ✅ Completo | Instagram, Facebook, LinkedIn, X |
+| Calendar view | ✅ Completo | Vista mensual, programar, desprogramar |
+| Cuentas de redes sociales (OAuth) | ✅ Completo | Meta, LinkedIn, X, TikTok, Threads |
+| Google Calendar sync | ✅ Completo | Export de eventos al programar |
+| Cost tracking | ✅ Completo | Dashboard de costos por modelo |
+| Registro/Login JWT | ✅ Backend completo | API funciona, falta UI |
+| Multi-tenancy | ✅ Completo | Aislamiento por orgId |
+
+### ⚠️ Pendiente para pruebas
+
+| Feature | Prioridad | Descripción |
+|---------|-----------|-------------|
+| **Login/Register en frontend** | 🔴 Alta | El backend tiene JWT completo, el frontend no tiene pantalla de login |
+| **JWT en peticiones API** | 🔴 Alta | `api.ts` no envía `Authorization: Bearer` todavía |
+| **Seed de datos de prueba** | 🟡 Media | Sin datos iniciales es difícil probar |
+
+### ⛔ Pendiente para producción
+
+| Feature | Prioridad | Descripción |
+|---------|-----------|-------------|
+| **Login UI** | 🔴 Crítico | Ver arriba |
+| **Guards en todos los endpoints** | 🔴 Crítico | Algunos controllers usan `|| 'demo-org'` en vez de JWT |
+| **Variables de entorno reales** | 🔴 Crítico | APIs de redes sociales, S3, Creatify |
+| **Token refresh OAuth** | 🟡 Media | Tokens vencen, no hay auto-refresh |
+| **Error notifications en UI** | 🟡 Media | Cuando falla una publicación no avisa |
+| **Rate limiting** | 🟡 Media | Protección contra abuse |
+| **Monitoreo + alertas** | 🟡 Media | Sentry, Datadog, etc. |
+
+---
+
+## Lo que falta para pruebas (detalle técnico)
+
+### 1. Pantalla de Login/Register en frontend
+
+El backend ya tiene endpoints funcionales:
+```
+POST /api/v1/auth/register  →  { email, password, name, organizationName }
+POST /api/v1/auth/login     →  { email, password }
+```
+
+Falta crear `LoginPage.tsx` que:
+- Muestre un form de registro/login
+- Guarde el token en `localStorage`
+- Redirija al dashboard
+
+### 2. Enviar JWT en peticiones
+
+`apps/frontend/src/lib/api.ts` actualmente no envía `Authorization`. Cambiar a:
+
+```typescript
+const token = localStorage.getItem('token');
+headers: { 
+  'Content-Type': 'application/json',
+  ...(token ? { Authorization: `Bearer ${token}` } : {})
+}
+```
+
+### 3. Seed de datos para probar rápido
+
+```bash
+# Crear cuenta
+curl -X POST http://localhost:4000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@test.com","password":"test1234","name":"Admin","organizationName":"Test Agency"}'
+
+# Crear cliente de prueba (con el token recibido)
+curl -X POST http://localhost:4000/api/v1/clients \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Nike Argentina","industry":"Deportes","branding":{"primaryColor":"#FF6600","toneOfVoice":"Inspiracional, energético"}}'
+```
+
+---
+
+## Deployment en Railway (recomendado)
+
+Railway puede hostear PostgreSQL, Redis, backend y frontend en un solo proyecto.
+
+### 1. Crear proyecto en Railway
+
+```bash
+# Instalar Railway CLI
+npm install -g @railway/cli
+railway login
+railway init
+```
+
+### 2. Agregar servicios
+
+Desde el dashboard de Railway:
+1. **PostgreSQL** → New Service → Database → PostgreSQL
+2. **Redis** → New Service → Database → Redis
+3. **Backend** → New Service → GitHub Repo → `apps/backend`
+4. **Frontend** → New Service → GitHub Repo → `apps/frontend`
+
+### 3. Variables de entorno del backend en Railway
+
+Railway inyecta `DATABASE_URL` y `REDIS_URL` automáticamente al vincular los servicios. Solo agregar:
+
+```
+JWT_SECRET=<random largo>
+ANTHROPIC_API_KEY=<tu key>
+ENCRYPTION_KEY=<64 chars hex>
+FRONTEND_URL=<URL del frontend en Railway>
+GEMINI_API_KEY=<opcional>
+```
+
+### 4. Build commands
+
+**Backend:**
+```
+Build: npm install && npx prisma@5 generate && npm run build
+Start: npx prisma@5 migrate deploy && npm run start:prod
+```
+
+**Frontend:**
+```
+Build: npm install && npm run build
+Start: npm run start
+```
+
+### 5. Variables del frontend
+
+```
+NEXT_PUBLIC_API_URL=<URL del backend en Railway>
+```
+
+---
+
+## Deployment en VPS (Ubuntu)
+
+```bash
+# 1. Instalar dependencias
+apt update && apt install -y nodejs npm docker.io docker-compose nginx certbot
+
+# 2. Clonar repo
+git clone <repo> /var/www/contentai
+cd /var/www/contentai
+
+# 3. Levantar infraestructura
+docker-compose up -d postgres redis minio
+
+# 4. Backend
 cd apps/backend
+npm install
+npx prisma@5 generate
+npx prisma@5 migrate deploy
 npm run build
-npm run start:prod
+npm run start:prod &
+
+# 5. Frontend
+cd apps/frontend
+npm install
+npm run build
+npm run start &
+
+# 6. Nginx como proxy
+# Ver PRODUCTION_GUIDE.md para config completa
+
+# 7. SSL
+certbot --nginx -d api.tudominio.com -d app.tudominio.com
 ```
 
 ---
 
-## 7) Deployment en Railway (evitar error de Railpack en monorepo)
+## Modelos de IA y costos estimados
 
-Si ves un error como **"Error creating build plan with Railpack"**, normalmente es por detección incorrecta del root en monorepo.
+| Tarea | Modelo | Costo aprox por pieza |
+|-------|--------|----------------------|
+| Caption POST | Claude Sonnet 4 | $0.008 |
+| Script REEL | Claude Sonnet 4 | $0.015 |
+| Hashtags | Claude Haiku 4.5 | $0.001 |
+| Prompt de imagen | Claude Haiku 4.5 | $0.001 |
+| Imagen | Gemini 2.0 Flash | $0.004 |
+| Video con avatar | Creatify Aurora | $0.10 - $1.00 |
 
-### Recomendación práctica
-- Servicio **Backend**:
-  - Root directory: `apps/backend`
-  - Builder: Dockerfile (o Nixpacks con root correcto)
-  - Start command: usar `entrypoint.sh` del Dockerfile
-- Servicio **Frontend**:
-  - Root directory: `apps/frontend`
-  - Builder: Dockerfile
-  - Exponer puerto `3000`
-- Servicios gestionados: Postgres + Redis
-- Variables por servicio (no mezclar frontend/backend)
-
-### Orden recomendado de deploy
-1. Crear Postgres y Redis.
-2. Deploy backend (validar `/api/v1/...`).
-3. Deploy frontend con `NEXT_PUBLIC_API_URL` apuntando al backend.
-4. Probar OAuth callbacks con dominios finales.
+El sistema cachea respuestas automáticamente para reducir costos en solicitudes similares.
 
 ---
 
-### Healthchecks del backend
-- `GET /api/v1/health/live` → liveness del proceso.
-- `GET /api/v1/health/ready` → valida conectividad de PostgreSQL y Redis.
+## Monitoreo de colas
 
-## 8) Checklist de pruebas (QA / staging)
+Bull-Board disponible en `http://localhost:3030` muestra:
+- Jobs en cola, procesando, completados, fallidos
+- Reintentar jobs fallidos
+- Ver logs de errores
 
-### Smoke tests mínimos
-- Login y flujo JWT.
-- Crear cliente + branding + notebook.
-- Generar contenido desde brief.
-- Aprobar pieza y programarla.
-- Worker publica a red sandbox o cuenta de prueba.
-- Verificar registro de costos y estado en calendario.
-
-### Pruebas técnicas recomendadas
-- Unit tests: servicios críticos (auth, generation, publishing).
-- Integration tests: Prisma + módulos Nest.
-- E2E tests: happy-path completo desde API.
-- Carga: cola BullMQ con jobs concurrentes.
-- Seguridad: rate limit, CORS, secretos, cifrado, expiración/refresh OAuth.
+En producción, proteger este endpoint con autenticación básica.
 
 ---
 
-## 9) Qué falta para “producción inmediata”
+## Documentación adicional
 
-### Crítico (bloqueante)
-1. **Suite de pruebas automatizadas real** (actualmente no hay tests implementados en repo).
-2. **CI/CD** (lint, test, build y migraciones controladas por pipeline).
-3. **Observabilidad** (logging estructurado, alertas, métricas y error tracking).
-4. **Hardening de seguridad** (rotación de secretos, política de CORS por entorno, auditoría OAuth).
-5. **Estrategia de backups + restore probado** para Postgres y assets.
-
-### Alto impacto (muy recomendable antes de go-live)
-1. Entorno **staging** separado de producción.
-2. Idempotencia y reintentos controlados en publishing para evitar duplicados.
-3. Runbooks operativos (incidentes, caída de APIs externas, token expirado).
-4. Límites por tenant (cuotas, rate limits y control de costos por plan).
-5. Healthchecks y readiness/liveness explícitos para despliegue.
-
----
-
-## 10) Operación y mantenimiento
-
-- Ejecutar migraciones con `prisma migrate deploy` en despliegue.
-- Mantener versión fija de Node (idealmente 20.x) entre local/CI/prod.
-- Revisar costos de IA semanalmente y ajustar router/modelos.
-- Monitorear colas BullMQ y latencias de workers.
-
----
-
-## 11) Documentación complementaria
-
-- Arquitectura completa: `./ARCHITECTURE.md`
-- Guía de producción extendida: `./PRODUCTION_GUIDE.md`
-
----
-
-## 12) Plan de ejecución de 7 días (staging → producción)
-
-### Día 1 — Base técnica y entornos
-- Fijar versión de Node en CI/CD y producción (20.x).
-- Crear entornos separados: `dev`, `staging`, `prod`.
-- Configurar secretos completos por entorno (backend/frontend).
-- Definir dominio final y callbacks OAuth por entorno.
-
-**Criterio de salida:** backend y frontend desplegados en staging con variables correctas.
-
-### Día 2 — Base de datos y datos críticos
-- Ejecutar migraciones en staging con `prisma migrate deploy`.
-- Definir política de backup automático (Postgres + bucket assets).
-- Probar restauración (restore drill) en entorno aislado.
-
-**Criterio de salida:** evidencia de backup + restore exitoso.
-
-### Día 3 — Calidad y pruebas automatizadas
-- Implementar tests unitarios en módulos críticos (`auth`, `generation`, `publishing`).
-- Implementar tests de integración para Prisma y endpoints clave.
-- Configurar pipeline CI: install → test → build.
-
-**Criterio de salida:** pipeline verde en PR + cobertura mínima acordada.
-
-### Día 4 — Seguridad y cumplimiento
-- Revisar CORS por entorno y endurecer políticas.
-- Rotación de secretos y validación de expiración de tokens OAuth.
-- Aplicar rate limiting y auditoría de logs de autenticación/publicación.
-
-**Criterio de salida:** checklist de seguridad aprobado internamente.
-
-### Día 5 — Robustez operativa
-- Implementar healthchecks (`/health`, readiness/liveness).
-- Definir idempotencia en publicación para evitar duplicados.
-- Afinar reintentos/backoff de jobs BullMQ y dead-letter strategy.
-
-**Criterio de salida:** workers resilientes ante fallos transitorios de APIs externas.
-
-### Día 6 — Observabilidad y on-call
-- Logging estructurado (request id, tenant id, job id).
-- Error tracking (Sentry o equivalente) y alertas por cola/errores 5xx.
-- Dashboard mínimo: latencia API, jobs pendientes/fallidos, costo IA diario.
-
-**Criterio de salida:** tablero operativo + alertas funcionales.
-
-### Día 7 — Go/No-Go y lanzamiento
-- Ejecutar smoke test completo en staging con cuentas sandbox reales.
-- Revisión de riesgos abiertos y plan de rollback.
-- Ventana de release controlada a producción.
-
-**Criterio de salida:** decisión Go/No-Go documentada y release ejecutado.
-
----
-
-## 13) Checklist de Go-Live (producción inmediata)
-
-### Debe estar en ✅ antes de lanzar
-- [ ] Pipeline CI/CD verde en rama principal.
-- [ ] Migraciones validadas en staging y plan de rollback probado.
-- [ ] Backups automáticos + restore test documentado.
-- [ ] OAuth end-to-end validado en dominios de producción.
-- [ ] Monitoreo y alertas operativas activas.
-- [ ] Runbook de incidentes compartido con el equipo.
-- [ ] Límite de costos IA por organización/plan habilitado.
-
-### Señales de riesgo (no lanzar si aparece alguna)
-- Jobs stuck o backlog de BullMQ sin visibilidad.
-- Publicaciones duplicadas o sin idempotencia.
-- Tokens OAuth expirando sin flujo de refresco confiable.
-- Ausencia de plan de rollback verificable.
+- [`PRODUCTION_GUIDE.md`](./PRODUCTION_GUIDE.md) — Arquitectura completa, flujos, costos, FAQ
+- [`IMPLEMENTATION_CHECKLIST.md`](./IMPLEMENTATION_CHECKLIST.md) — Checklist priorizado de tareas pendientes
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — Diagramas de sistema y queues
