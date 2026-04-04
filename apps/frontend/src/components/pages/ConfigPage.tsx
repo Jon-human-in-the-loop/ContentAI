@@ -12,6 +12,15 @@ interface ServiceStatus {
   docsUrl?: string;
 }
 
+interface ClaudeModel {
+  id: string;
+  label: string;
+  tier: string;
+  description: string;
+  inputCost: number;
+  outputCost: number;
+}
+
 type ConfigStatus = Record<string, Record<string, ServiceStatus>>;
 
 const categoryMeta: Record<string, { icon: string; title: string; priority: 'critical' | 'high' | 'medium' | 'low' }> = {
@@ -31,16 +40,57 @@ const priorityLabel: Record<string, { text: string; className: string }> = {
   low:      { text: 'Opcional', className: 'bg-slate-100 text-slate-500' },
 };
 
+const tierStyles: Record<string, { badge: string; ring: string; dot: string }> = {
+  lite:    { badge: 'bg-emerald-100 text-emerald-700', ring: 'ring-emerald-300', dot: 'bg-emerald-400' },
+  premium: { badge: 'bg-violet-100  text-violet-700',  ring: 'ring-violet-300',  dot: 'bg-violet-500'  },
+  ultra:   { badge: 'bg-amber-100   text-amber-700',   ring: 'ring-amber-300',   dot: 'bg-amber-500'   },
+};
+
 export function ConfigPage() {
   const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // AI model selector state
+  const [models, setModels] = useState<ClaudeModel[]>([]);
+  const [currentModel, setCurrentModel] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [savingModel, setSavingModel] = useState(false);
+  const [modelSaved, setModelSaved] = useState(false);
 
   useEffect(() => {
     api('/admin/config-status')
       .then(data => setStatus(data))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Load available Claude models
+    api('/settings/organization/ai-model')
+      .then((data: { current: string; models: ClaudeModel[] }) => {
+        setModels(data.models || []);
+        setCurrentModel(data.current || '');
+        setSelectedModel(data.current || '');
+      })
+      .catch(() => {});
   }, []);
+
+  const handleSaveModel = async () => {
+    if (selectedModel === currentModel) return;
+    setSavingModel(true);
+    setModelSaved(false);
+    try {
+      await api('/settings/organization/ai-model', {
+        method: 'PUT',
+        body: JSON.stringify({ modelId: selectedModel }),
+      });
+      setCurrentModel(selectedModel);
+      setModelSaved(true);
+      setTimeout(() => setModelSaved(false), 3000);
+    } catch {
+      alert('Error al guardar el modelo');
+    } finally {
+      setSavingModel(false);
+    }
+  };
 
   const totalServices = status ? Object.values(status).flatMap(cat => Object.values(cat)).length : 0;
   const configuredServices = status ? Object.values(status).flatMap(cat => Object.values(cat)).filter(s => s.configured).length : 0;
@@ -54,6 +104,66 @@ export function ConfigPage() {
           Revisá qué servicios están activos y qué variables de entorno necesitás configurar
         </p>
       </div>
+
+      {/* Claude Model Selector */}
+      {models.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-semibold">Modelo de Claude</h2>
+              <p className="text-xs text-muted-foreground">Elige qué modelo usa tu organización para generar contenido</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {modelSaved && (
+                <span className="text-xs text-emerald-600 font-medium">✓ Guardado</span>
+              )}
+              <button
+                onClick={handleSaveModel}
+                disabled={savingModel || selectedModel === currentModel}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {savingModel ? 'Guardando...' : 'Guardar modelo'}
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {models.map((model) => {
+              const ts = tierStyles[model.tier] || tierStyles.lite;
+              const isSelected = selectedModel === model.id;
+              const isCurrent = currentModel === model.id;
+              return (
+                <button
+                  key={model.id}
+                  onClick={() => setSelectedModel(model.id)}
+                  className={`text-left p-4 rounded-xl border-2 transition-all ${
+                    isSelected
+                      ? `border-violet-500 bg-violet-50/50 ring-2 ${ts.ring}`
+                      : 'border-transparent bg-white shadow-sm hover:shadow-md hover:border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <span className="font-semibold text-sm">{model.label}</span>
+                    <div className="flex gap-1 shrink-0">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ts.badge}`}>
+                        {model.tier}
+                      </span>
+                      {isCurrent && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">
+                          activo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">{model.description}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">
+                    ${model.inputCost}/M in · ${model.outputCost}/M out
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Summary */}
       {status && (
