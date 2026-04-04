@@ -188,6 +188,20 @@ export class ContentService {
     });
   }
 
+  /**
+   * Delete a content piece permanently
+   */
+  async deletePiece(orgId: string, pieceId: string) {
+    const piece = await this.prisma.contentPiece.findFirst({
+      where: { id: pieceId, orgId },
+    });
+    if (!piece) throw new NotFoundException('Content piece not found');
+
+    await this.prisma.contentPiece.delete({ where: { id: pieceId } });
+    return { success: true, id: pieceId };
+  }
+
+
   private getPriority(plan: string): number {
     switch (plan) {
       case 'ENTERPRISE': return 1;

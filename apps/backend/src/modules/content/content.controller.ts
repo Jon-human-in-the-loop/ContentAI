@@ -102,6 +102,16 @@ export class ContentController {
   }
 
   /**
+   * DELETE /api/v1/content/pieces/:id
+   * Permanently delete a content piece
+   */
+  @Delete('pieces/:id')
+  async deletePiece(@Request() req, @Param('id') id: string) {
+    const orgId = req.user.orgId;
+    return this.contentService.deletePiece(orgId, id);
+  }
+
+  /**
    * POST /api/v1/content/pieces/:id/image-prompt
    * Use Claude to generate an optimized image prompt based on the piece context
    */

@@ -40,6 +40,12 @@ export function ContentPage() {
   // Approve action
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
+  // View modal
+  const [viewingPiece, setViewingPiece] = useState<ContentPiece | null>(null);
+
+  // Delete
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   // Edit modal
   const [editingPiece, setEditingPiece] = useState<ContentPiece | null>(null);
   const [editForm, setEditForm] = useState({ caption: '', hashtags: '' });
@@ -155,6 +161,20 @@ export function ContentPage() {
       setScheduleError(err.message || 'Error al programar');
     } finally {
       setScheduling(false);
+    }
+  };
+
+  const handleDelete = async (pieceId: string) => {
+    if (!confirm('¿Eliminar esta pieza de contenido?')) return;
+    setDeletingId(pieceId);
+    try {
+      await api(`/content/pieces/${pieceId}`, { method: 'DELETE' });
+      setPieces(prev => prev.filter(p => p.id !== pieceId));
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('No se pudo eliminar la pieza. Intentá de nuevo.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -305,6 +325,7 @@ export function ContentPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground" onClick={() => setViewingPiece(piece)}>Ver</Button>
                   {piece.status === 'DRAFT' && (
                     <>
                       <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openEdit(piece)}>Editar</Button>
@@ -336,6 +357,14 @@ export function ContentPage() {
                   {piece.status === 'PUBLISHED' && (
                     <span className="text-[10px] text-emerald-600 font-medium">✓ Publicado</span>
                   )}
+                  <button
+                    onClick={() => handleDelete(piece.id)}
+                    disabled={deletingId === piece.id}
+                    className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    title="Eliminar pieza"
+                  >
+                    {deletingId === piece.id ? '…' : '🗑'}
+                  </button>
                 </div>
               </div>
             </CardContent>
@@ -347,6 +376,79 @@ export function ContentPage() {
         <div className="text-center py-12">
           <p className="text-muted-foreground">No se encontraron piezas con esos filtros</p>
         </div>
+      )}
+
+      {/* ── View Modal ── */}
+      {viewingPiece && typeof window !== 'undefined' && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.6)', overflowY: 'auto' }} onClick={() => setViewingPiece(null)}>
+          <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold bg-slate-100 px-2 py-0.5 rounded">{viewingPiece.type}</span>
+                    <span className="text-xs text-muted-foreground">{viewingPiece.platform}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[viewingPiece.status]}`}>{viewingPiece.status}</span>
+                  </div>
+                  <h2 className="text-lg font-semibold">{viewingPiece.clientName}</h2>
+                  <p className="text-xs text-muted-foreground">{new Date(viewingPiece.createdAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                </div>
+                <button onClick={() => setViewingPiece(null)} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
+              </div>
+
+              <div className="space-y-4">
+                {viewingPiece.hook && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-medium mb-1">🎣 Hook</p>
+                    <p className="text-sm font-medium text-emerald-800">{viewingPiece.hook}</p>
+                  </div>
+                )}
+
+                <div className="bg-muted/40 rounded-lg p-4">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">📝 Caption</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewingPiece.caption || 'Sin caption'}</p>
+                </div>
+
+                {viewingPiece.script && (
+                  <div className="bg-muted/40 rounded-lg p-4">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">🎬 Script</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewingPiece.script}</p>
+                  </div>
+                )}
+
+                {viewingPiece.cta && (
+                  <div className="bg-violet-50 border border-violet-100 rounded-lg p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-violet-600 font-medium mb-1">📣 CTA</p>
+                    <p className="text-sm text-violet-800">{viewingPiece.cta}</p>
+                  </div>
+                )}
+
+                {viewingPiece.hashtags?.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">🏷️ Hashtags</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {viewingPiece.hashtags.map(h => (
+                        <span key={h} className="text-xs text-violet-600 bg-violet-50 border border-violet-100 px-2 py-0.5 rounded-full">#{h}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                  <div className="flex items-center gap-3">
+                    {viewingPiece.modelUsed && <span className="text-xs text-muted-foreground">🤖 {viewingPiece.modelUsed}</span>}
+                    {viewingPiece.generationCost > 0 && <span className="text-xs text-muted-foreground">${viewingPiece.generationCost.toFixed(5)}</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => { setViewingPiece(null); openEdit(viewingPiece); }}>✏️ Editar</Button>
+                    <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => { setViewingPiece(null); handleDelete(viewingPiece.id); }}>🗑 Eliminar</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Edit Modal ── */}
