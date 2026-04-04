@@ -1,5 +1,6 @@
 import { Controller, Get, Put, Body } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { execSync } from 'child_process';
 
 // TODO: Replace with authenticated user's org JWT
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
@@ -140,11 +141,30 @@ export class OrganizationController {
       return { error: 'Modelo inválido', available: CLAUDE_MODELS.map(m => m.id) };
     }
 
-    await this.prisma.organization.update({
-      where: { id: DEFAULT_ORG_ID },
-      data: { preferredModel: body.modelId } as any,
-    });
+    try {
+      await this.prisma.organization.update({
+        where: { id: DEFAULT_ORG_ID },
+        data: { preferredModel: body.modelId } as any,
+      });
 
-    return { success: true, model: valid };
+      return { success: true, model: valid };
+    } catch (err: any) {
+      return { error: 'Error DB Prisma: ' + err.message };
+    }
+  }
+
+  @Get('force-migration')
+  forceMigration() {
+    try {
+      const result = execSync('npx prisma migrate deploy', { encoding: 'utf-8' });
+      return { success: true, output: result };
+    } catch (err: any) {
+      return { 
+        success: false, 
+        error: err.message, 
+        stderr: err.stderr?.toString(),
+        stdout: err.stdout?.toString()
+      };
+    }
   }
 }

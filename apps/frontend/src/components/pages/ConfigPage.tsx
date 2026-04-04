@@ -78,15 +78,20 @@ export function ConfigPage() {
     setSavingModel(true);
     setModelSaved(false);
     try {
-      await api('/settings/organization/ai-model', {
+      const resp = await api('/settings/organization/ai-model', {
         method: 'PUT',
         body: JSON.stringify({ modelId: selectedModel }),
       });
+      
+      if (resp.error) {
+        throw new Error(resp.error);
+      }
+
       setCurrentModel(selectedModel);
       setModelSaved(true);
       setTimeout(() => setModelSaved(false), 3000);
-    } catch {
-      alert('Error al guardar el modelo');
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar el modelo');
     } finally {
       setSavingModel(false);
     }
