@@ -29,6 +29,7 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewingRequest, setViewingRequest] = useState<any | null>(null);
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
@@ -78,10 +79,11 @@ export function DashboardPage() {
   }, []);
 
   const handleDeleteRequest = async (id: string) => {
-    if (!window.confirm('¿Eliminar esta solicitud atascada?')) return;
+    if (!window.confirm('¿Eliminar esta solicitud? Se borrarán todas sus piezas generadas.')) return;
     try {
       await api(`/content/requests/${id}`, { method: 'DELETE' });
       setRequests(prev => prev.filter(r => r.id !== id));
+      if (viewingRequest?.id === id) setViewingRequest(null);
     } catch (err) {
       console.error(err);
       alert('Error eliminando la solicitud.');
@@ -151,7 +153,7 @@ export function DashboardPage() {
             <span className="text-xs text-muted-foreground">{requests.length} requests</span>
           </div>
           {requests.map((req) => (
-            <Card key={req.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+            <Card key={req.id} className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingRequest(req)}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -172,17 +174,16 @@ export function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <div className="text-xs text-muted-foreground">{req.completedPieces || 0}/{req.totalPieces || 0}</div>
-                      {(req.status === 'PROCESSING' || req.status === 'FAILED') && (
-                        <button 
-                          onClick={() => handleDeleteRequest(req.id)}
-                          className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"
-                          title="Eliminar request trabado"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                        </button>
-                      )}
+                      {/* Delete — available for all statuses */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
+                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                        title="Eliminar request"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
                     </div>
                     <Progress value={((req.completedPieces || 0) / (req.totalPieces || 1)) * 100} className="w-20 h-1.5" />
                   </div>
@@ -292,6 +293,94 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ── Request detail modal ───────────────────────────────────── */}
+      {viewingRequest && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-end"
+          onClick={() => setViewingRequest(null)}
+        >
+          {/* backdrop */}
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+
+          {/* panel */}
+          <div
+            className="relative z-10 h-full w-full max-w-xl bg-white shadow-2xl overflow-y-auto flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 p-6 border-b sticky top-0 bg-white z-10">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold">{viewingRequest.client?.name || 'Unknown'}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[viewingRequest.status] || 'bg-slate-100'}`}>
+                    {viewingRequest.status}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {viewingRequest.completedPieces || 0}/{viewingRequest.totalPieces || 0} piezas completadas
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => handleDeleteRequest(viewingRequest.id)}
+                  className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  Eliminar
+                </button>
+                <button
+                  onClick={() => setViewingRequest(null)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Brief */}
+            <div className="p-6 border-b">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Brief</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewingRequest.brief}</p>
+            </div>
+
+            {/* Pieces */}
+            <div className="p-6 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                Piezas generadas ({(viewingRequest.pieces || []).length})
+              </p>
+              {(viewingRequest.pieces || []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">No hay piezas generadas aún</p>
+              ) : (
+                <div className="space-y-4">
+                  {(viewingRequest.pieces || []).map((piece: any, idx: number) => (
+                    <div key={piece.id || idx} className="rounded-xl border bg-slate-50/60 p-4">
+                      <div className="flex items-center gap-2 mb-2.5">
+                        <span className="text-[10px] font-mono bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
+                          {piece.contentType} · {piece.platform || '—'}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${statusColors[piece.status] || 'bg-slate-100 text-slate-500'}`}>
+                          {piece.status}
+                        </span>
+                      </div>
+                      {piece.caption && (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap mb-2">{piece.caption}</p>
+                      )}
+                      {piece.hashtags && (
+                        <p className="text-xs text-violet-600 font-mono leading-relaxed">{piece.hashtags}</p>
+                      )}
+                      {!piece.caption && !piece.hashtags && (
+                        <p className="text-xs text-muted-foreground italic">Sin contenido generado</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
