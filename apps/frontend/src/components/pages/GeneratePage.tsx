@@ -262,21 +262,30 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                         
                         setIsGeneratingIdea(true);
                         try {
-                          const toneInstruction = toneInfo 
-                            ? `El tono de voz OBLIGATORIO de la marca es: "${toneInfo}". Todo el enfoque del prompt debe respirar esa personalidad.` 
-                            : `Asegúrate de que el tono sea persuasivo y profesional.`;
+                          const toneInstruction = toneInfo
+                            ? `El tono de voz de la marca es: "${toneInfo}".`
+                            : `El tono debe ser profesional y persuasivo.`;
 
-                          const instruction = `Actúa como un experto trafficker y copywriter armando un prompt para crear un post en redes sociales para la marca ${clientName}. 
-Nicho: ${industry}. 
-${toneInstruction}
+                          const instruction = `Eres un estratega de contenido digital experto en marketing.
 
-Escribe una breve IDEA DE PROMPT sobre un tema clave en su nicho.
-Requisitos: 
-- Debe desarrollar un punto de dolor o interés de la audiencia objetivo.
-- El CTA final debe invitarlos a contactarnos o agendar un servicio.
-- Pide incluir un dato estadístico o hecho curioso relacionado.
+Tu tarea es escribir un BRIEF DE CONTENIDO (no el contenido en sí). Este brief es un set de instrucciones claras que alguien usará para pedirle a un creador o a una IA que genere el post final.
 
-Devuelve UNICAMENTE el texto del prompt en tu idioma nativo (español) sin introducciones ni comillas corporativas, estructurado de forma concisa en máximo 5 renglones.`;
+Datos del cliente:
+- Marca: ${clientName}
+- Nicho: ${industry}
+- ${toneInstruction}
+
+El brief debe indicar:
+1. El TEMA o ángulo concreto del post (un problema, error común, dato, comparación, etc.)
+2. El TONO y estilo de escritura requerido
+3. El OBJETIVO del post (qué debe sentir o hacer el lector)
+4. El CTA explícito (qué acción se quiere provocar)
+5. Un dato o elemento concreto a incluir (estadística, anécdota, comparación, etc.)
+
+FORMATO DE SALIDA: Texto plano, máximo 5-6 líneas, redactado como instrucciones directas al creador. Empieza con el tema. Ejemplo de formato correcto:
+"Habla sobre los 3 errores más comunes que cometen [tipo de cliente] al [acción]. El tono debe ser [tono]. El objetivo es que [emoción/acción deseada]. El CTA debe invitar a [acción concreta]. Menciona que [dato o hecho relevante]."
+
+NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. Solo el brief.`;
                           
                           const randomSeed = Math.floor(Math.random() * 100000);
                           const encodedInstruction = encodeURIComponent(instruction);
