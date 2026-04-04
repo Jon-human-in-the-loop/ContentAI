@@ -4,13 +4,72 @@ import { PrismaService } from '../../database/prisma.service';
 // TODO: Replace with authenticated user's org JWT
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
-// Available Claude models with metadata
+// Available Claude models — Anthropic official pricing April 2026
+// Prices in USD per 1M tokens
 export const CLAUDE_MODELS = [
-  { id: 'claude-haiku-4-5',  label: 'Claude Haiku 4.5',  tier: 'lite',    description: 'Rápido y económico — ideal para alto volumen', inputCost: 0.80,  outputCost: 4.00  },
-  { id: 'claude-sonnet-4',   label: 'Claude Sonnet 4',   tier: 'premium', description: 'Equilibrado — calidad y velocidad óptimas',      inputCost: 3.00,  outputCost: 15.00 },
-  { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', tier: 'premium', description: 'Mayor capacidad creativa y coherencia',             inputCost: 3.00,  outputCost: 15.00 },
-  { id: 'claude-opus-4',     label: 'Claude Opus 4',     tier: 'ultra',   description: 'Máxima calidad — copywriting de alto impacto',     inputCost: 15.00, outputCost: 75.00 },
+  // ── Haiku (economical) ────────────────────────────────────────────────
+  {
+    id: 'claude-haiku-3-20240307',
+    label: 'Claude Haiku 3',
+    tier: 'lite',
+    description: 'Ultra-económico — ideal para alta cadencia y prototipos',
+    inputCost: 0.25, outputCost: 1.25,
+  },
+  {
+    id: 'claude-haiku-3-5-20241022',
+    label: 'Claude Haiku 3.5',
+    tier: 'lite',
+    description: 'Rápido y económico — buena relación calidad/costo',
+    inputCost: 0.80, outputCost: 4.00,
+  },
+  {
+    id: 'claude-haiku-4-5-20251001',
+    label: 'Claude Haiku 4.5',
+    tier: 'lite',
+    description: 'El Haiku más capaz — alto volumen a bajo costo',
+    inputCost: 1.00, outputCost: 5.00,
+  },
+
+  // ── Sonnet (balanced) ─────────────────────────────────────────────────
+  {
+    id: 'claude-sonnet-4-20250514',
+    label: 'Claude Sonnet 4',
+    tier: 'premium',
+    description: 'Equilibrado — calidad y velocidad óptimas',
+    inputCost: 3.00, outputCost: 15.00,
+  },
+  {
+    id: 'claude-sonnet-4-5-20251015',
+    label: 'Claude Sonnet 4.5',
+    tier: 'premium',
+    description: 'Mayor coherencia narrativa y creatividad',
+    inputCost: 3.00, outputCost: 15.00,
+  },
+  {
+    id: 'claude-sonnet-4-6-20251101',
+    label: 'Claude Sonnet 4.6',
+    tier: 'premium',
+    description: 'Última versión Sonnet — rendimiento premium al mismo precio',
+    inputCost: 3.00, outputCost: 15.00,
+  },
+
+  // ── Opus (ultra) ──────────────────────────────────────────────────────
+  {
+    id: 'claude-opus-4-5-20251101',
+    label: 'Claude Opus 4.5',
+    tier: 'ultra',
+    description: 'Máxima calidad — copywriting y estrategia de alto impacto',
+    inputCost: 5.00, outputCost: 25.00,
+  },
+  {
+    id: 'claude-opus-4-6-20251201',
+    label: 'Claude Opus 4.6',
+    tier: 'ultra',
+    description: 'El modelo más potente de Anthropic — 1M contexto',
+    inputCost: 5.00, outputCost: 25.00,
+  },
 ];
+
 
 @Controller('settings/organization')
 export class OrganizationController {

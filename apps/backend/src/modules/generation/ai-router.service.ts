@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
-import { TASK_MODEL_MAP, AI_MODELS, MODEL_COSTS } from '../../common/constants';
+import { MODEL_COSTS, DEFAULT_MODEL_COST, TASK_MODEL_MAP, AI_MODELS } from '../../common/constants';
 
 export interface AiRequest {
   taskType: string;
@@ -94,7 +94,7 @@ export class AiRouterService {
    * Calculate cost in USD
    */
   private calculateCost(model: string, inputTokens: number, outputTokens: number): number {
-    const costs = MODEL_COSTS[model] || MODEL_COSTS[AI_MODELS.LITE];
+    const costs = MODEL_COSTS[model] ?? DEFAULT_MODEL_COST;
     return (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
   }
 }
