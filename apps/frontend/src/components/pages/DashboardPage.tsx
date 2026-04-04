@@ -103,7 +103,7 @@ export function DashboardPage() {
         {[
           { label: 'Clientes',       value: stats.overview?.totalClients || 0,                                 sub: 'activos',           accent: 'from-violet-500 to-violet-600', icon: '◎' },
           { label: 'Piezas este mes', value: stats.overview?.monthlyPieces || 0,                               sub: `${stats.overview?.totalPieces || 0} total`, accent: 'from-emerald-500 to-emerald-600', icon: '✦' },
-          { label: 'Uso Tokens',     value: `${(stats.costs?.tokenBudget?.usagePercent || 0).toFixed(1)}%`,   sub: 'presupuesto usado', accent: 'from-sky-500 to-blue-600',    icon: '⚡' },
+          { label: 'Uso Tokens',     value: `${parseFloat(String(stats.costs?.tokenBudget?.usagePercent || 0)).toFixed(1)}%`,   sub: 'presupuesto usado', accent: 'from-sky-500 to-blue-600',    icon: '⚡' },
         ].map((s) => (
           <Card key={s.label} className="stat-glow border-0 shadow-sm">
             <CardContent className="pt-5 pb-4 px-5">
@@ -127,7 +127,7 @@ export function DashboardPage() {
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-[11.5px] uppercase tracking-wider text-muted-foreground font-medium">Gasto del mes</p>
-                <p className="text-[26px] font-bold mt-1 tracking-tight">${(stats.costs?.monthlySpend || 0).toFixed(6)}</p>
+                <p className="text-[26px] font-bold mt-1 tracking-tight">${parseFloat(String(stats.costs?.monthlySpend || 0)).toFixed(6)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                   <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${isRefreshing ? 'bg-amber-400' : 'bg-emerald-400'} animate-pulse`} />
                   {stats.costs?.apiCalls || 0} llamadas
