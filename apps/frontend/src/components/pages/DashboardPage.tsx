@@ -27,47 +27,54 @@ export function DashboardPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [recentPieces, setRecentPieces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
+    else setIsRefreshing(true);
+    try {
+      const [dashStats, rawClients, rawRequests] = await Promise.all([
+        api('/analytics/dashboard').catch(() => null),
+        api('/clients').catch(() => []),
+        api('/content/requests').catch(() => [])
+      ]);
+      
+      setStats(dashStats || {
+        overview: { totalClients: 0, monthlyPieces: 0, totalPieces: 0 },
+        costs: { monthlySpend: 0, apiCalls: 0, tokenBudget: { usagePercent: 0, used: 0, limit: 1000000 } },
+      });
+      
+      const mappedClients = (rawClients || []).map((c: any) => ({
+        ...c,
+        primaryColor: c.branding?.primaryColor || '#6c63ff',
+        secondaryColor: c.branding?.secondaryColor || '#f0efff',
+        totalPieces: c._count?.contentPieces || 0,
+      }));
+      setClients(mappedClients);
+      setRequests(rawRequests || []);
+      
+      const allPieces = (rawRequests || []).flatMap((r: any) => r.pieces || []);
+      allPieces.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setRecentPieces(allPieces.slice(0, 6));
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+      if (!silent) setStats({
+        overview: { totalClients: 0, monthlyPieces: 0, totalPieces: 0 },
+        costs: { monthlySpend: 0, apiCalls: 0, tokenBudget: { usagePercent: 0, used: 0, limit: 1000000 } },
+      });
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [dashStats, rawClients, rawRequests] = await Promise.all([
-          api('/analytics/dashboard').catch(() => null),
-          api('/clients').catch(() => []),
-          api('/content/requests').catch(() => [])
-        ]);
-        
-        setStats(dashStats || {
-          overview: { totalClients: 0, monthlyPieces: 0, totalPieces: 0 },
-          costs: { monthlySpend: 0, apiCalls: 0, tokenBudget: { usagePercent: 0, used: 0, limit: 1000000 } },
-        });
-        
-        const mappedClients = (rawClients || []).map((c: any) => ({
-          ...c,
-          primaryColor: c.branding?.primaryColor || '#6c63ff',
-          secondaryColor: c.branding?.secondaryColor || '#f0efff',
-          totalPieces: c._count?.contentPieces || 0,
-        }));
-        setClients(mappedClients);
-        
-        setRequests(rawRequests || []);
-        
-        // Extract recent pieces from requests to display
-        const allPieces = (rawRequests || []).flatMap((r: any) => r.pieces || []);
-        // simple sort by createdAt if available
-        allPieces.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setRecentPieces(allPieces.slice(0, 6));
-      } catch (err) {
-        console.error('Failed to load dashboard:', err);
-        setStats({
-          overview: { totalClients: 0, monthlyPieces: 0, totalPieces: 0 },
-          costs: { monthlySpend: 0, apiCalls: 0, tokenBudget: { usagePercent: 0, used: 0, limit: 1000000 } },
-        });
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => loadData(true), 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleDeleteRequest = async (id: string) => {
@@ -96,18 +103,28 @@ export function DashboardPage() {
         {[
           { label: 'Clientes', value: stats.overview?.totalClients || 0, sub: 'activos', accent: 'from-violet-500 to-violet-600' },
           { label: 'Piezas este mes', value: stats.overview?.monthlyPieces || 0, sub: `${stats.overview?.totalPieces || 0} total`, accent: 'from-emerald-500 to-emerald-600' },
-          { label: 'Gasto del mes', value: `$${stats.costs?.monthlySpend || 0}`, sub: `${stats.costs?.apiCalls || 0} llamadas API`, accent: 'from-amber-500 to-orange-500' },
+          { 
+            label: 'Gasto del mes', 
+            value: `$${(stats.costs?.monthlySpend || 0).toFixed(6)}`, 
+            sub: (
+              <span className="flex items-center gap-1.5">
+                <span className={`inline-block w-1.5 h-1.5 rounded-full ${isRefreshing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400 animate-pulse'}`} />
+                <span>{stats.costs?.apiCalls || 0} llamadas · {lastUpdated ? `${lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'cargando...'}</span>
+              </span>
+            ),
+            accent: 'from-amber-500 to-orange-500' 
+          },
           { label: 'Uso Tokens', value: `${(stats.costs?.tokenBudget?.usagePercent || 0).toFixed(1)}%`, sub: 'presupuesto usado', accent: 'from-sky-500 to-blue-600' },
         ].map((s, i) => (
           <Card key={i} className="stat-glow border-0 shadow-sm">
             <CardContent className="pt-5 pb-4 px-5">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-[11.5px] uppercase tracking-wider text-muted-foreground font-medium">{s.label}</p>
-                  <p className="text-[28px] font-bold mt-1 tracking-tight">{s.value}</p>
+                  <p className="text-[26px] font-bold mt-1 tracking-tight">{s.value}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{s.sub}</p>
                 </div>
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.accent} flex items-center justify-center text-white/90 text-lg shadow-lg`}>
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.accent} flex items-center justify-center text-white/90 text-lg shadow-lg shrink-0`}>
                   {['◎', '✦', '$', '⚡'][i]}
                 </div>
               </div>
