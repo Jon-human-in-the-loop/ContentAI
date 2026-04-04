@@ -61,6 +61,14 @@ export class GenerationWorker extends WorkerHost {
 
       // 2. Build generation context (including brand notebook)
       const notebookContext = await this.notebookService.buildContext(data.clientId);
+
+      // Read org preferred model
+      const org = await this.prisma.organization.findUnique({
+        where: { id: data.orgId },
+        select: { preferredModel: true },
+      });
+      const preferredModel = org?.preferredModel || undefined;
+
       const context = {
         clientName: data.clientName,
         industry: data.industry,
@@ -106,6 +114,7 @@ export class GenerationWorker extends WorkerHost {
             userPrompt: `Based on this existing content, create a fresh variation:\n${semanticHit}\n\nBrief: ${data.brief}\nThis is variation #${data.index + 1}. Make it different but on-brand.`,
             maxTokens: 1024,
             temperature: 0.9,
+            preferredModel,
           });
 
           result = this.parseAiResponse(adaptResponse.content);
@@ -115,7 +124,7 @@ export class GenerationWorker extends WorkerHost {
           cost = adaptResponse.cost;
           durationMs = adaptResponse.durationMs;
         } else {
-          // Full generation with premium model
+          // Full generation
           const taskType = this.promptBuilder.getTaskType(data.type);
           const response = await this.aiRouter.generate({
             taskType,
@@ -123,6 +132,7 @@ export class GenerationWorker extends WorkerHost {
             userPrompt: this.promptBuilder.buildUserPrompt(context),
             maxTokens: 1500,
             temperature: 0.8,
+            preferredModel,
           });
 
           result = this.parseAiResponse(response.content);

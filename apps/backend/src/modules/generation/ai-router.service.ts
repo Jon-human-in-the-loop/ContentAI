@@ -9,6 +9,7 @@ export interface AiRequest {
   userPrompt: string;
   maxTokens?: number;
   temperature?: number;
+  preferredModel?: string; // Override TASK_MODEL_MAP when provided
 }
 
 export interface AiResponse {
@@ -35,7 +36,7 @@ export class AiRouterService {
    * Route a request to the appropriate model based on task type
    */
   async generate(request: AiRequest): Promise<AiResponse> {
-    const model = this.selectModel(request.taskType);
+    const model = this.selectModel(request.taskType, request.preferredModel);
     const startTime = Date.now();
 
     this.logger.log(
@@ -84,7 +85,8 @@ export class AiRouterService {
   /**
    * Select the appropriate model for a task
    */
-  private selectModel(taskType: string): string {
+  private selectModel(taskType: string, preferredModel?: string): string {
+    if (preferredModel) return preferredModel;
     return TASK_MODEL_MAP[taskType] || AI_MODELS.LITE;
   }
 
