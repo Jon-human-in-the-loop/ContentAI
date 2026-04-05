@@ -23,39 +23,41 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 }
 
 async function main() {
-  console.log('🌱 Creando usuario admin...');
+  console.log('🌱 Procesando usuario admin...');
 
-  // Verificar si ya existe
-  const existing = await prisma.user.findUnique({ where: { email: ADMIN_EMAIL } });
-  if (existing) {
-    console.log(`⚠️  El usuario ${ADMIN_EMAIL} ya existe. Nada que hacer.`);
-    return;
-  }
-
-  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD!, 12);
   const slug = ORG_NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
   const result = await prisma.$transaction(async (tx) => {
-    const org = await tx.organization.create({
-      data: { name: ORG_NAME, slug },
-    });
-    const user = await tx.user.create({
-      data: {
+    // 1. Asegurar la organización
+    let org = await tx.organization.findUnique({ where: { slug } });
+    if (!org) {
+      org = await tx.organization.create({
+        data: { name: ORG_NAME, slug },
+      });
+    }
+
+    // 2. Crear o actualizar el usuario
+    const user = await tx.user.upsert({
+      where: { email: ADMIN_EMAIL! },
+      update: {
+        passwordHash,
+      },
+      create: {
         orgId: org.id,
-        email: ADMIN_EMAIL,
+        email: ADMIN_EMAIL!,
         passwordHash,
         name: ADMIN_NAME,
         role: 'OWNER',
       },
     });
+
     return { org, user };
   });
 
-  console.log('✅ Usuario admin creado:');
+  console.log('✅ Usuario admin procesado:');
   console.log(`   Email:    ${result.user.email}`);
-  console.log(`   Password: ${ADMIN_PASSWORD}`);
-  console.log(`   Org:      ${result.org.name} (${result.org.id})`);
-  console.log(`   Role:     ${result.user.role}`);
+  console.log(`   Acción:   Actualizado/Creado con nueva contraseña.`);
 }
 
 main()
