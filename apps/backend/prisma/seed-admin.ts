@@ -11,10 +11,16 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-const ADMIN_EMAIL = 'admin@contentai.app';
-const ADMIN_PASSWORD = 'ContentAI2025!';
+const ADMIN_EMAIL = process.env.INITIAL_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.INITIAL_ADMIN_PASSWORD;
 const ADMIN_NAME = 'Admin';
 const ORG_NAME = 'ContentAI';
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error('❌ Error: INITIAL_ADMIN_EMAIL or INITIAL_ADMIN_PASSWORD environment variables are missing.');
+  console.log('   Please set these in your .env file or environment before running this script.');
+  process.exit(1);
+}
 
 async function main() {
   console.log('🌱 Creando usuario admin...');
