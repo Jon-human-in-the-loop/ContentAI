@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: contentai-backend
+    runtime: docker
+    dockerfilePath: ./apps/backend/Dockerfile
+    dockerContext: ./apps/backend
+    plan: free
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: OAUTH_REDIRECT_BASE
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
