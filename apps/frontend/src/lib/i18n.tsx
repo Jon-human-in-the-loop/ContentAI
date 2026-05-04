@@ -544,7 +544,6 @@ const translations: Translations = {
     'clients.notebook_cat_guidelines': 'Guidelines / Rules',
     'clients.notebook_cat_reference': 'References',
     'clients.notebook_cat_general': 'General',
-    'clients.notebook_cat_general': 'General',
     'clients.delete_confirm': 'Delete client? This action cannot be undone.',
 
     // Config
