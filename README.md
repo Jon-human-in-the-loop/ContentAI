@@ -1,5 +1,7 @@
 # ContentAI
 
+[English](README.en.md) | [Español](README.md)
+
 Plataforma SaaS de generación y gestión de contenido para redes sociales, construida para agencias digitales. Genera texto, imágenes y videos con IA, programa publicaciones y gestiona múltiples clientes desde un solo dashboard.
 
 ---
