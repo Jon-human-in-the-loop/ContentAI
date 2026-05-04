@@ -19,9 +19,11 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // Allow requests with no origin (curl, Postman, server-to-server)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin.replace(/\/$/, ''))) {
-        return callback(null, true);
-      }
+      const clean = origin.replace(/\/$/, '');
+      // Allow explicitly configured origins
+      if (allowedOrigins.includes(clean)) return callback(null, true);
+      // Allow all Vercel deployment URLs (preview + production)
+      if (clean.endsWith('.vercel.app')) return callback(null, true);
       return callback(new Error(`CORS blocked: ${origin}`), false);
     },
     credentials: true,
