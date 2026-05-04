@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/primitives';
 import { Textarea } from '@/components/ui/primitives';
 import { Client } from '@/data/mock';
 import { api } from '@/lib/api';
+import { useI18n } from '@/lib/i18n';
 
 const platformIcons: Record<string, string> = {
   INSTAGRAM: '📷', FACEBOOK: '📘', TIKTOK: '🎵', LINKEDIN: '💼', X: '𝕏', THREADS: '🧵',
@@ -59,16 +60,8 @@ interface NotebookEntry {
   updatedAt: string;
 }
 
-const NOTEBOOK_CATEGORIES = [
-  { value: 'brand_voice', label: 'Voz de marca' },
-  { value: 'audience', label: 'Audiencia' },
-  { value: 'competitors', label: 'Competencia' },
-  { value: 'guidelines', label: 'Guidelines' },
-  { value: 'reference', label: 'Referencia' },
-  { value: 'general', label: 'General' },
-];
-
 export function ClientsPage() {
+  const { t } = useI18n();
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [search, setSearch] = useState('');
@@ -88,6 +81,15 @@ export function ClientsPage() {
   const [showNotebookForm, setShowNotebookForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState<string | null>(null);
   const [entryForm, setEntryForm] = useState({ title: '', content: '', category: 'general' });
+
+  const NOTEBOOK_CATEGORIES = [
+    { value: 'brand_voice', label: t('clients.notebook_cat_voice') },
+    { value: 'audience', label: t('clients.notebook_cat_audience') },
+    { value: 'competitors', label: t('clients.notebook_cat_competitors') },
+    { value: 'guidelines', label: t('clients.notebook_cat_guidelines') },
+    { value: 'reference', label: t('clients.notebook_cat_reference') },
+    { value: 'general', label: t('clients.notebook_cat_general') },
+  ];
 
   useEffect(() => {
     async function loadClients() {
@@ -163,7 +165,7 @@ export function ClientsPage() {
       setDialogOpen(false);
     } catch (err: any) {
       console.error('Failed to create client:', err);
-      alert('Error al crear el cliente: ' + (err?.message || 'Error desconocido'));
+      alert(t('common.error') + ': ' + (err?.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -221,7 +223,7 @@ export function ClientsPage() {
       setEditDialogOpen(false);
     } catch (err: any) {
       console.error('Failed to update client:', err);
-      alert('Error al guardar los cambios: ' + (err?.message || 'Error desconocido'));
+      alert(t('common.error') + ': ' + (err?.message || 'Unknown error'));
     } finally {
       setEditSaving(false);
     }
@@ -294,8 +296,8 @@ export function ClientsPage() {
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground text-sm mt-1">{clients.length} clientes activos</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('clients.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('clients.subtitle', { count: clients.length })}</p>
         </div>
 
         {/* ── New Client Dialog ── */}
@@ -305,34 +307,34 @@ export function ClientsPage() {
               className="bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 transition-shadow"
               onClick={() => setDialogOpen(true)}
             >
-              + Nuevo cliente
+              {t('clients.new')}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Nuevo Cliente</DialogTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">Completá los datos de la marca para que la IA genere contenido personalizado</p>
+              <DialogTitle>{t('clients.dialog_title')}</DialogTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('clients.dialog_subtitle')}</p>
             </DialogHeader>
 
             <div className="space-y-5 pt-1">
 
-              {/* ── Sección 1: Datos básicos ── */}
+              {/* ── Section 1: Basic Data ── */}
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Datos básicos</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_basic')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Nombre del negocio *</Label>
+                    <Label className="text-xs">{t('clients.field_name')}</Label>
                     <Input
-                      placeholder="Ej: La Parrilla de Juan"
+                      placeholder={t('clients.field_name_placeholder')}
                       className="mt-1"
                       value={form.name}
                       onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Rubro / Industria *</Label>
+                    <Label className="text-xs">{t('clients.field_industry')}</Label>
                     <Input
-                      placeholder="Ej: Restaurante, Gym, E-commerce"
+                      placeholder={t('clients.field_industry_placeholder')}
                       className="mt-1"
                       value={form.industry}
                       onChange={e => setForm(p => ({ ...p, industry: e.target.value }))}
@@ -341,7 +343,7 @@ export function ClientsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div>
-                    <Label className="text-xs">Sitio web</Label>
+                    <Label className="text-xs">{t('clients.field_website')}</Label>
                     <Input
                       placeholder="https://..."
                       className="mt-1"
@@ -350,9 +352,9 @@ export function ClientsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Fuente corporativa</Label>
+                    <Label className="text-xs">{t('clients.field_font')}</Label>
                     <Input
-                      placeholder="Ej: Montserrat, Poppins"
+                      placeholder={t('clients.field_font_placeholder')}
                       className="mt-1"
                       value={form.font}
                       onChange={e => setForm(p => ({ ...p, font: e.target.value }))}
@@ -360,9 +362,9 @@ export function ClientsPage() {
                   </div>
                 </div>
                 <div className="mt-3">
-                  <Label className="text-xs">Descripción del negocio</Label>
+                  <Label className="text-xs">{t('clients.field_description')}</Label>
                   <Textarea
-                    placeholder="Breve descripción de qué hace esta marca, qué vende, qué la hace especial..."
+                    placeholder={t('clients.field_description_placeholder')}
                     className="mt-1"
                     rows={2}
                     value={form.description}
@@ -371,12 +373,12 @@ export function ClientsPage() {
                 </div>
               </div>
 
-              {/* ── Sección 2: Identidad de marca ── */}
+              {/* ── Section 2: Brand Identity ── */}
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Identidad de marca</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_identity')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">Color primario</Label>
+                    <Label className="text-xs">{t('clients.field_primary_color')}</Label>
                     <div className="flex items-center gap-2 mt-1">
                       <input
                         type="color"
@@ -393,7 +395,7 @@ export function ClientsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs">Color secundario</Label>
+                    <Label className="text-xs">{t('clients.field_secondary_color')}</Label>
                     <div className="flex items-center gap-2 mt-1">
                       <input
                         type="color"
@@ -418,14 +420,14 @@ export function ClientsPage() {
                 />
               </div>
 
-              {/* ── Sección 3: Voz y audiencia ── */}
+              {/* ── Section 3: Voice and Audience ── */}
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Voz y audiencia (para la IA)</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_voice')}</p>
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-xs">Tono de voz</Label>
+                    <Label className="text-xs">{t('clients.field_tone')}</Label>
                     <Textarea
-                      placeholder="Ej: Cercano, divertido, sin tecnicismos. Usa emojis con moderación. Habla como un amigo que sabe del tema."
+                      placeholder={t('clients.field_tone_placeholder')}
                       className="mt-1"
                       rows={2}
                       value={form.toneOfVoice}
@@ -433,9 +435,9 @@ export function ClientsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Público objetivo</Label>
+                    <Label className="text-xs">{t('clients.field_audience')}</Label>
                     <Input
-                      placeholder="Ej: Mujeres 25-40, amantes del fitness, Buenos Aires"
+                      placeholder={t('clients.field_audience_placeholder')}
                       className="mt-1"
                       value={form.targetAudience}
                       onChange={e => setForm(p => ({ ...p, targetAudience: e.target.value }))}
@@ -443,32 +445,30 @@ export function ClientsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs">Palabras clave</Label>
+                      <Label className="text-xs">{t('clients.field_keywords')}</Label>
                       <Input
                         placeholder="healthy, organic, bienestar"
                         className="mt-1"
                         value={form.keywords}
                         onChange={e => setForm(p => ({ ...p, keywords: e.target.value }))}
                       />
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Separadas por coma</p>
                     </div>
                     <div>
-                      <Label className="text-xs">Palabras prohibidas</Label>
+                      <Label className="text-xs">{t('clients.field_prohibited')}</Label>
                       <Input
                         placeholder="barato, gratis, oferta"
                         className="mt-1"
                         value={form.prohibitedWords}
                         onChange={e => setForm(p => ({ ...p, prohibitedWords: e.target.value }))}
                       />
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Separadas por coma</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ── Sección 4: Plataformas ── */}
+              {/* ── Section 4: Platforms ── */}
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Plataformas activas</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_platforms')}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {ALL_PLATFORMS.map(p => (
                     <button
@@ -494,7 +494,7 @@ export function ClientsPage() {
                 onClick={handleCreate}
                 disabled={saving || !form.name.trim() || !form.industry.trim()}
               >
-                {saving ? 'Creando...' : 'Crear cliente'}
+                {saving ? t('clients.submit_creating') : t('clients.submit_create')}
               </Button>
             </div>
           </DialogContent>
@@ -502,7 +502,7 @@ export function ClientsPage() {
       </div>
 
       <Input
-        placeholder="Buscar clientes por nombre o rubro..."
+        placeholder={t('clients.search_placeholder')}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         className="max-w-sm"
@@ -544,12 +544,12 @@ export function ClientsPage() {
                     </span>
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground font-medium">{client.totalPieces} piezas</span>
+                <span className="text-xs text-muted-foreground font-medium">{client.totalPieces} {t('dashboard.pieces_label')}</span>
               </div>
 
               <div className="flex gap-1.5 mt-3">
-                <div className="w-6 h-6 rounded-md shadow-inner border border-black/5" style={{ background: client.primaryColor }} title="Primario" />
-                <div className="w-6 h-6 rounded-md shadow-inner border border-black/5" style={{ background: client.secondaryColor }} title="Secundario" />
+                <div className="w-6 h-6 rounded-md shadow-inner border border-black/5" style={{ background: client.primaryColor }} title={t('clients.color_primary')} />
+                <div className="w-6 h-6 rounded-md shadow-inner border border-black/5" style={{ background: client.secondaryColor }} title={t('clients.color_secondary')} />
               </div>
             </CardContent>
           </Card>
@@ -561,35 +561,35 @@ export function ClientsPage() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }} onClick={() => setEditDialogOpen(false)}>
           <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
             <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
-              <h2 className="text-lg font-semibold mb-0.5">Editar cliente: {selectedClient.name}</h2>
-              <p className="text-xs text-muted-foreground mb-5">Actualizá los datos de la marca</p>
+              <h2 className="text-lg font-semibold mb-0.5">{t('clients.edit_title', { name: selectedClient.name })}</h2>
+              <p className="text-xs text-muted-foreground mb-5">{t('clients.edit_subtitle')}</p>
 
               <div className="space-y-5">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Datos básicos</p>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_basic')}</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label className="text-xs">Nombre *</Label><Input className="mt-1" value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} /></div>
-                    <div><Label className="text-xs">Rubro *</Label><Input className="mt-1" value={editForm.industry} onChange={e => setEditForm(p => ({ ...p, industry: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('clients.field_name')}</Label><Input className="mt-1" value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('clients.field_industry')}</Label><Input className="mt-1" value={editForm.industry} onChange={e => setEditForm(p => ({ ...p, industry: e.target.value }))} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div><Label className="text-xs">Sitio web</Label><Input placeholder="https://..." className="mt-1" value={editForm.website} onChange={e => setEditForm(p => ({ ...p, website: e.target.value }))} /></div>
-                    <div><Label className="text-xs">Fuente corporativa</Label><Input placeholder="Ej: Montserrat" className="mt-1" value={editForm.font} onChange={e => setEditForm(p => ({ ...p, font: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('clients.field_website')}</Label><Input placeholder="https://..." className="mt-1" value={editForm.website} onChange={e => setEditForm(p => ({ ...p, website: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('clients.field_font')}</Label><Input placeholder={t('clients.field_font_placeholder')} className="mt-1" value={editForm.font} onChange={e => setEditForm(p => ({ ...p, font: e.target.value }))} /></div>
                   </div>
-                  <div className="mt-3"><Label className="text-xs">Descripción</Label><Textarea className="mt-1" rows={2} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} /></div>
+                  <div className="mt-3"><Label className="text-xs">{t('clients.field_description')}</Label><Textarea className="mt-1" rows={2} value={editForm.description} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} /></div>
                 </div>
 
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Identidad de marca</p>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_identity')}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs">Color primario</Label>
+                      <Label className="text-xs">{t('clients.field_primary_color')}</Label>
                       <div className="flex items-center gap-2 mt-1">
                         <input type="color" value={editForm.primaryColor} onChange={e => setEditForm(p => ({ ...p, primaryColor: e.target.value }))} className="w-9 h-9 rounded-lg border cursor-pointer p-0.5 bg-white" />
                         <Input className="flex-1" value={editForm.primaryColor} onChange={e => setEditForm(p => ({ ...p, primaryColor: e.target.value }))} />
                       </div>
                     </div>
                     <div>
-                      <Label className="text-xs">Color secundario</Label>
+                      <Label className="text-xs">{t('clients.field_secondary_color')}</Label>
                       <div className="flex items-center gap-2 mt-1">
                         <input type="color" value={editForm.secondaryColor} onChange={e => setEditForm(p => ({ ...p, secondaryColor: e.target.value }))} className="w-9 h-9 rounded-lg border cursor-pointer p-0.5 bg-white" />
                         <Input className="flex-1" value={editForm.secondaryColor} onChange={e => setEditForm(p => ({ ...p, secondaryColor: e.target.value }))} />
@@ -600,19 +600,19 @@ export function ClientsPage() {
                 </div>
 
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Voz y audiencia</p>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_voice')}</p>
                   <div className="space-y-3">
-                    <div><Label className="text-xs">Tono de voz</Label><Textarea className="mt-1" rows={2} value={editForm.toneOfVoice} onChange={e => setEditForm(p => ({ ...p, toneOfVoice: e.target.value }))} /></div>
-                    <div><Label className="text-xs">Público objetivo</Label><Input className="mt-1" value={editForm.targetAudience} onChange={e => setEditForm(p => ({ ...p, targetAudience: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('clients.field_tone')}</Label><Textarea className="mt-1" rows={2} value={editForm.toneOfVoice} onChange={e => setEditForm(p => ({ ...p, toneOfVoice: e.target.value }))} /></div>
+                    <div><Label className="text-xs">{t('clients.field_audience')}</Label><Input className="mt-1" value={editForm.targetAudience} onChange={e => setEditForm(p => ({ ...p, targetAudience: e.target.value }))} /></div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><Label className="text-xs">Palabras clave</Label><Input placeholder="healthy, organic" className="mt-1" value={editForm.keywords} onChange={e => setEditForm(p => ({ ...p, keywords: e.target.value }))} /></div>
-                      <div><Label className="text-xs">Palabras prohibidas</Label><Input placeholder="barato, gratis" className="mt-1" value={editForm.prohibitedWords} onChange={e => setEditForm(p => ({ ...p, prohibitedWords: e.target.value }))} /></div>
+                      <div><Label className="text-xs">{t('clients.field_keywords')}</Label><Input placeholder="healthy, organic" className="mt-1" value={editForm.keywords} onChange={e => setEditForm(p => ({ ...p, keywords: e.target.value }))} /></div>
+                      <div><Label className="text-xs">{t('clients.field_prohibited')}</Label><Input placeholder="barato, gratis" className="mt-1" value={editForm.prohibitedWords} onChange={e => setEditForm(p => ({ ...p, prohibitedWords: e.target.value }))} /></div>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">Plataformas activas</p>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-3">{t('clients.section_platforms')}</p>
                   <div className="grid grid-cols-3 gap-2">
                     {ALL_PLATFORMS.map(p => (
                       <button key={p} type="button"
@@ -626,9 +626,9 @@ export function ClientsPage() {
                 </div>
 
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>{t('common.cancel')}</Button>
                   <Button className="flex-1 bg-gradient-to-r from-violet-500 to-violet-600 text-white h-11 font-medium" onClick={handleUpdate} disabled={editSaving || !editForm.name.trim() || !editForm.industry.trim()}>
-                    {editSaving ? 'Guardando...' : 'Guardar cambios'}
+                    {editSaving ? t('clients.submit_saving') : t('clients.submit_save')}
                   </Button>
                 </div>
               </div>
@@ -657,20 +657,20 @@ export function ClientsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => openEditDialog(selectedClient)}>Editar</Button>
+                <Button variant="outline" size="sm" onClick={() => openEditDialog(selectedClient)}>{t('common.edit')}</Button>
                 <Button size="sm" className="bg-gradient-to-r from-violet-500 to-violet-600 text-white" onClick={() => handleGenerateContent(selectedClient.id)}>
-                  Generar contenido
+                  {t('clients.generate_content')}
                 </Button>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-6">
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Tono de voz</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">{t('clients.field_tone')}</p>
                 <p className="text-sm italic text-muted-foreground">"{selectedClient.toneOfVoice}"</p>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Plataformas</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">{t('clients.section_platforms')}</p>
                 <div className="flex gap-2 flex-wrap">
                   {selectedClient.platforms.map((p) => (
                     <Badge key={p} variant="secondary" className="text-xs">
@@ -680,7 +680,7 @@ export function ClientsPage() {
                 </div>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Colores de marca</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">{t('clients.section_identity')}</p>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg shadow-inner border" style={{ background: selectedClient.primaryColor }} />
                   <span className="text-xs text-muted-foreground font-mono">{selectedClient.primaryColor}</span>
@@ -694,8 +694,8 @@ export function ClientsPage() {
             <div className="mt-6 pt-6 border-t">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">Brand Notebook</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">Conocimiento de marca que la IA usa para generar contenido</p>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{t('clients.notebook_title')}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t('clients.notebook_subtitle')}</p>
                 </div>
                 <Button
                   size="sm"
@@ -703,7 +703,7 @@ export function ClientsPage() {
                   className="text-xs h-7 border-dashed"
                   onClick={() => { setShowNotebookForm(true); setEditingEntry(null); setEntryForm({ title: '', content: '', category: 'general' }); }}
                 >
-                  + Agregar nota
+                  {t('clients.notebook_add')}
                 </Button>
               </div>
 
@@ -712,16 +712,16 @@ export function ClientsPage() {
                 <div className="bg-muted/30 rounded-lg p-4 mb-4 space-y-3 border border-dashed border-violet-200">
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
-                      <Label className="text-xs">Título</Label>
+                      <Label className="text-xs">{t('clients.notebook_field_title')}</Label>
                       <Input
-                        placeholder="Ej: Pilares de contenido, Competencia directa..."
+                        placeholder={t('clients.notebook_field_title_placeholder')}
                         className="mt-1"
                         value={entryForm.title}
                         onChange={e => setEntryForm(p => ({ ...p, title: e.target.value }))}
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Categoría</Label>
+                      <Label className="text-xs">{t('clients.notebook_field_category')}</Label>
                       <select
                         className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
                         value={entryForm.category}
@@ -734,9 +734,9 @@ export function ClientsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs">Contenido</Label>
+                    <Label className="text-xs">{t('clients.notebook_field_content')}</Label>
                     <Textarea
-                      placeholder="Escribí toda la información relevante sobre este aspecto de la marca. Cuanto más detalle, mejor contenido genera la IA."
+                      placeholder={t('clients.notebook_field_content_placeholder')}
                       className="mt-1 min-h-[100px]"
                       value={entryForm.content}
                       onChange={e => setEntryForm(p => ({ ...p, content: e.target.value }))}
@@ -744,7 +744,7 @@ export function ClientsPage() {
                   </div>
                   <div className="flex gap-2 justify-end">
                     <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => { setShowNotebookForm(false); setEditingEntry(null); }}>
-                      Cancelar
+                      {t('common.cancel')}
                     </Button>
                     <Button
                       size="sm"
@@ -752,7 +752,7 @@ export function ClientsPage() {
                       onClick={handleSaveEntry}
                       disabled={!entryForm.title.trim() || !entryForm.content.trim()}
                     >
-                      {editingEntry ? 'Guardar cambios' : 'Agregar'}
+                      {editingEntry ? t('common.save') : t('common.ready')}
                     </Button>
                   </div>
                 </div>
@@ -760,12 +760,12 @@ export function ClientsPage() {
 
               {/* Entries list */}
               {notebookLoading ? (
-                <p className="text-xs text-muted-foreground text-center py-4">Cargando notebook...</p>
+                <p className="text-xs text-muted-foreground text-center py-4">{t('clients.notebook_loading')}</p>
               ) : notebookEntries.length === 0 ? (
                 <div className="text-center py-8 bg-muted/20 rounded-lg">
-                  <p className="text-sm font-medium text-muted-foreground">Sin notas todavía</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('clients.notebook_empty')}</p>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    Agregá información sobre la marca: voz, audiencia, competencia, guidelines, referencias de contenido...
+                    {t('clients.notebook_empty_desc')}
                   </p>
                 </div>
               ) : (
@@ -787,13 +787,13 @@ export function ClientsPage() {
                             className="text-[10px] text-violet-500 hover:underline px-1"
                             onClick={() => startEditEntry(entry)}
                           >
-                            Editar
+                            {t('common.edit')}
                           </button>
                           <button
                             className="text-[10px] text-red-400 hover:underline px-1"
                             onClick={() => handleDeleteEntry(entry.id)}
                           >
-                            Eliminar
+                            {t('common.delete')}
                           </button>
                         </div>
                       </div>

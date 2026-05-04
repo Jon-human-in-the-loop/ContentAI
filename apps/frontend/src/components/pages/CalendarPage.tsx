@@ -4,26 +4,20 @@ import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/primitives';
-
-const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function getFirstDayOfMonth(year: number, month: number) {
-  const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1; // Monday = 0
-}
-
-const typeColors: Record<string, string> = {
-  POST: 'bg-violet-500',
-  REEL: 'bg-emerald-500',
-  STORY: 'bg-amber-500',
-  CAROUSEL: 'bg-sky-500',
-};
+import { useI18n } from '@/lib/i18n';
 
 export function CalendarPage() {
+  const { t, language } = useI18n();
+  const DAYS = [
+    t('calendar.day_mon'),
+    t('calendar.day_tue'),
+    t('calendar.day_wed'),
+    t('calendar.day_thu'),
+    t('calendar.day_fri'),
+    t('calendar.day_sat'),
+    t('calendar.day_sun')
+  ];
+
   const now = new Date();
   const todayDay = now.getDate();
   const todayMonth = now.getMonth();
@@ -54,7 +48,7 @@ export function CalendarPage() {
 
             eventsObj[dateStr].push({
               id: p.id,
-              clientName: req.client?.name || 'Cliente',
+              clientName: req.client?.name || t('generate.client'),
               type: p.type || 'POST',
               platform: 'INSTAGRAM',
               caption: p.caption || '',
@@ -71,12 +65,22 @@ export function CalendarPage() {
       }
     }
     loadEvents();
-  }, []);
+  }, [language]);
+
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (year: number, month: number) => {
+    const day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Monday = 0
+  };
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
 
-  const monthName = new Date(viewYear, viewMonth).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  const locale = language === 'es' ? 'es-AR' : 'en-US';
+  const monthName = new Date(viewYear, viewMonth).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 
   const goToPrevMonth = () => {
     if (viewMonth === 0) {
@@ -126,7 +130,7 @@ export function CalendarPage() {
       const data = await api(`/content/pieces/${pieceId}`);
       setDetailPiece(data);
     } catch (err) {
-      toast({ message: 'Error al cargar el detalle de la pieza', variant: 'destructive' });
+      toast({ message: t('calendar.error_loading_detail'), variant: 'destructive' });
     }
     finally {
       setLoadingDetail(false);
@@ -147,7 +151,7 @@ export function CalendarPage() {
       });
     } catch (err) {
       console.error('Failed to unschedule:', err);
-      toast({ message: 'No se pudo desprogramar la pieza. Reintentá en unos momentos.', variant: 'destructive' });
+      toast({ message: t('calendar.error_unscheduling'), variant: 'destructive' });
     } finally {
       setUnschedulingId(null);
     }
@@ -155,12 +159,19 @@ export function CalendarPage() {
 
   const isViewingCurrentMonth = viewYear === todayYear && viewMonth === todayMonth;
 
+  const typeColors: Record<string, string> = {
+    POST: 'bg-violet-500',
+    REEL: 'bg-emerald-500',
+    STORY: 'bg-amber-500',
+    CAROUSEL: 'bg-sky-500',
+  };
+
   return (
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Calendario</h1>
-          <p className="text-muted-foreground text-sm mt-1">Programá y visualizá tu contenido</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('calendar.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('calendar.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-3 mr-4">
@@ -187,7 +198,7 @@ export function CalendarPage() {
         </div>
         {!isViewingCurrentMonth && (
           <Button variant="outline" size="sm" onClick={goToToday} className="text-xs">
-            Hoy
+            {t('common.ready')}
           </Button>
         )}
       </div>
@@ -223,7 +234,7 @@ export function CalendarPage() {
                   {day}
                 </span>
                 {isToday && (
-                  <Badge variant="secondary" className="text-[9px] bg-violet-100 text-violet-600 px-1 py-0">HOY</Badge>
+                  <Badge variant="secondary" className="text-[9px] bg-violet-100 text-violet-600 px-1 py-0">{t('calendar.today_badge')}</Badge>
                 )}
               </div>
               {events.map((ev) => (
@@ -245,11 +256,11 @@ export function CalendarPage() {
         <Card className="border-0 shadow-lg animate-in">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold">Detalle de pieza</h3>
-              <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setDetailPiece(null)}>✕ Cerrar</button>
+              <h3 className="font-semibold">{t('calendar.piece_details')}</h3>
+              <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setDetailPiece(null)}>✕ {t('calendar.close')}</button>
             </div>
             {loadingDetail ? (
-              <p className="text-xs text-muted-foreground animate-pulse">Cargando...</p>
+              <p className="text-xs text-muted-foreground animate-pulse">{t('common.loading')}</p>
             ) : detailPiece && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -259,23 +270,23 @@ export function CalendarPage() {
                 </div>
                 {detailPiece.hook && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Hook</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.hook_label')}</p>
                     <p className="text-sm text-emerald-700 font-medium mt-0.5">{detailPiece.hook}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Caption</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.caption_label')}</p>
                   <p className="text-sm mt-0.5 leading-relaxed">{detailPiece.caption}</p>
                 </div>
                 {detailPiece.cta && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">CTA</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.cta_label')}</p>
                     <p className="text-sm text-violet-700 font-medium mt-0.5">{detailPiece.cta}</p>
                   </div>
                 )}
                 {detailPiece.script && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Guión</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.script_label')}</p>
                     <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{detailPiece.script}</pre>
                   </div>
                 )}
@@ -296,10 +307,10 @@ export function CalendarPage() {
         <Card className="border-0 shadow-lg animate-in">
           <CardContent className="p-5">
             <h3 className="font-semibold mb-3">
-              {parseInt(selectedDay)} de {monthName}
+              {parseInt(selectedDay)} {t('common.total')} {monthName}
               {selectedEvents.length > 0
-                ? ` — ${selectedEvents.length} pieza${selectedEvents.length > 1 ? 's' : ''} programada${selectedEvents.length > 1 ? 's' : ''}`
-                : ' — Sin contenido programado'}
+                ? ` — ${t('calendar.scheduled_pieces', { count: selectedEvents.length })}`
+                : ` — ${t('calendar.no_events')}`}
             </h3>
             {selectedEvents.length > 0 ? (
               <div className="space-y-3">
@@ -314,7 +325,7 @@ export function CalendarPage() {
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">{ev.caption}</p>
                       <div className="flex gap-2 mt-2">
-                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => handleViewDetail(ev.id)}>Ver detalle</Button>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => handleViewDetail(ev.id)}>{t('calendar.view_detail')}</Button>
                         {ev.status === 'SCHEDULED' && (
                           <Button
                             size="sm"
@@ -323,7 +334,7 @@ export function CalendarPage() {
                             disabled={unschedulingId === ev.id}
                             onClick={() => handleUnschedule(ev.id)}
                           >
-                            {unschedulingId === ev.id ? '...' : 'Desprogramar'}
+                            {unschedulingId === ev.id ? '...' : t('calendar.unschedule')}
                           </Button>
                         )}
                       </div>
@@ -332,7 +343,7 @@ export function CalendarPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Podés arrastrar contenido aprobado a este día para programarlo.</p>
+              <p className="text-sm text-muted-foreground">{t('calendar.unscheduled_desc')}</p>
             )}
           </CardContent>
         </Card>

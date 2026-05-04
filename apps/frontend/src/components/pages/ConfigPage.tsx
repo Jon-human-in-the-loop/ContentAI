@@ -23,21 +23,21 @@ interface ClaudeModel {
 
 type ConfigStatus = Record<string, Record<string, ServiceStatus>>;
 
-const categoryMeta: Record<string, { icon: string; title: string; priority: 'critical' | 'high' | 'medium' | 'low' }> = {
-  core:          { icon: '🏗️', title: 'Infraestructura', priority: 'critical' },
-  ai:            { icon: '✦', title: 'Modelos de IA', priority: 'critical' },
-  social:        { icon: '🌐', title: 'Redes Sociales (OAuth)', priority: 'high' },
-  storage:       { icon: '📦', title: 'Almacenamiento', priority: 'medium' },
-  billing:       { icon: '💳', title: 'Stripe (Billing)', priority: 'medium' },
-  notifications: { icon: '📧', title: 'Email (SMTP)', priority: 'medium' },
-  video:         { icon: '▶', title: 'Video / TTS', priority: 'low' },
+const categoryMeta: Record<string, { icon: string; titleKey: string; priority: 'critical' | 'high' | 'medium' | 'low' }> = {
+  core:          { icon: '🏗️', titleKey: 'config.cat_infra', priority: 'critical' },
+  ai:            { icon: '✦', titleKey: 'config.cat_ai', priority: 'critical' },
+  social:        { icon: '🌐', titleKey: 'config.cat_social', priority: 'high' },
+  storage:       { icon: '📦', titleKey: 'config.cat_storage', priority: 'medium' },
+  billing:       { icon: '💳', titleKey: 'config.cat_billing', priority: 'medium' },
+  notifications: { icon: '📧', titleKey: 'config.cat_notifications', priority: 'medium' },
+  video:         { icon: '▶', titleKey: 'config.cat_video', priority: 'low' },
 };
 
-const priorityLabel: Record<string, { text: string; className: string }> = {
-  critical: { text: 'Crítico', className: 'bg-red-100 text-red-700' },
-  high:     { text: 'Alto', className: 'bg-orange-100 text-orange-700' },
-  medium:   { text: 'Medio', className: 'bg-amber-100 text-amber-700' },
-  low:      { text: 'Opcional', className: 'bg-slate-100 text-slate-500' },
+const priorityLabel: Record<string, { textKey: string; className: string }> = {
+  critical: { textKey: 'config.prio_critical', className: 'bg-red-100 text-red-700' },
+  high:     { textKey: 'config.prio_high', className: 'bg-orange-100 text-orange-700' },
+  medium:   { textKey: 'config.prio_medium', className: 'bg-amber-100 text-amber-700' },
+  low:      { textKey: 'config.prio_low', className: 'bg-slate-100 text-slate-500' },
 };
 
 const tierStyles: Record<string, { badge: string; ring: string; dot: string }> = {
@@ -47,6 +47,7 @@ const tierStyles: Record<string, { badge: string; ring: string; dot: string }> =
 };
 
 export function ConfigPage() {
+  const { t } = useI18n();
   const [status, setStatus] = useState<ConfigStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +92,7 @@ export function ConfigPage() {
       setModelSaved(true);
       setTimeout(() => setModelSaved(false), 3000);
     } catch (err: any) {
-      alert(err.message || 'Error al guardar el modelo');
+      alert(err.message || t('common.error'));
     } finally {
       setSavingModel(false);
     }
@@ -104,9 +105,9 @@ export function ConfigPage() {
     <div className="space-y-8 animate-in max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Estado de Configuración</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('config.title')}</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Revisá qué servicios están activos y qué variables de entorno necesitás configurar
+          {t('config.subtitle')}
         </p>
       </div>
 
@@ -115,19 +116,19 @@ export function ConfigPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-base font-semibold">Modelo de Claude</h2>
-              <p className="text-xs text-muted-foreground">Elige qué modelo usa tu organización para generar contenido</p>
+              <h2 className="text-base font-semibold">{t('config.claude_title')}</h2>
+              <p className="text-xs text-muted-foreground">{t('config.claude_subtitle')}</p>
             </div>
             <div className="flex items-center gap-2">
               {modelSaved && (
-                <span className="text-xs text-emerald-600 font-medium">✓ Guardado</span>
+                <span className="text-xs text-emerald-600 font-medium">{t('config.model_saved')}</span>
               )}
               <button
                 onClick={handleSaveModel}
                 disabled={savingModel || selectedModel === currentModel}
                 className="px-4 py-1.5 rounded-lg text-xs font-medium bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {savingModel ? 'Guardando...' : 'Guardar modelo'}
+                {savingModel ? t('config.saving_model') : t('config.save_model')}
               </button>
             </div>
           </div>
@@ -154,7 +155,7 @@ export function ConfigPage() {
                       </span>
                       {isCurrent && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600">
-                          activo
+                          {t('common.active')}
                         </span>
                       )}
                     </div>
@@ -177,7 +178,7 @@ export function ConfigPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">
-                  {configuredServices}/{totalServices} servicios configurados
+                  {t('config.services_configured', { configured: configuredServices, total: totalServices })}
                 </p>
                 <div className="w-64 h-2 bg-muted rounded-full mt-2 overflow-hidden">
                   <div
@@ -188,10 +189,12 @@ export function ConfigPage() {
               </div>
               <div className="text-right">
                 {configuredServices === totalServices ? (
-                  <p className="text-emerald-600 font-semibold text-sm">✓ Todo configurado</p>
+                  <p className="text-emerald-600 font-semibold text-sm">{t('config.all_configured')}</p>
                 ) : (
                   <p className="text-amber-600 font-semibold text-sm">
-                    {totalServices - configuredServices} pendiente{totalServices - configuredServices > 1 ? 's' : ''}
+                    {totalServices - configuredServices === 1 
+                      ? t('config.pending', { count: 1 })
+                      : t('config.pendings', { count: totalServices - configuredServices })}
                   </p>
                 )}
               </div>
@@ -202,7 +205,7 @@ export function ConfigPage() {
 
       {loading && (
         <div className="text-center py-12 text-muted-foreground text-sm animate-pulse">
-          Cargando estado de servicios...
+          {t('config.loading')}
         </div>
       )}
 
@@ -222,10 +225,12 @@ export function ConfigPage() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-semibold">{meta.title}</h2>
-                  <Badge variant="secondary" className={`text-[10px] px-2 ${prio.className}`}>{prio.text}</Badge>
+                  <h2 className="text-base font-semibold">{t(meta.titleKey)}</h2>
+                  <Badge variant="secondary" className={`text-[10px] px-2 ${prio.className}`}>{t(prio.textKey)}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">{configuredCount}/{entries.length} servicios activos</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('config.active_services', { count: configuredCount, total: entries.length })}
+                </p>
               </div>
             </div>
 
@@ -257,7 +262,7 @@ export function ConfigPage() {
                                 : 'bg-slate-100 text-slate-500'
                             }`}
                           >
-                            {service.configured ? '● Activo' : '○ Sin configurar'}
+                            {service.configured ? t('config.active') : t('config.not_configured')}
                           </Badge>
                         </div>
 
@@ -302,18 +307,16 @@ export function ConfigPage() {
       {/* Setup guide */}
       <Card className="border-0 shadow-sm bg-gradient-to-r from-slate-50 to-slate-50/50">
         <CardContent className="p-5">
-          <h3 className="font-semibold text-sm mb-3">📋 Cómo configurar en Railway</h3>
+          <h3 className="font-semibold text-sm mb-3">{t('config.railway_guide_title')}</h3>
           <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside">
-            <li>Abrí tu proyecto en <strong>Railway Dashboard</strong></li>
-            <li>Seleccioná el servicio de <strong>backend</strong></li>
-            <li>Andá a <strong>Variables</strong> → <strong>Add Variable</strong></li>
-            <li>Pegá las variables de entorno necesarias</li>
-            <li>Railway hace el redeploy automático</li>
+            <li>{t('config.railway_step1')}</li>
+            <li>{t('config.railway_step2')}</li>
+            <li>{t('config.railway_step3')}</li>
+            <li>{t('config.railway_step4')}</li>
+            <li>{t('config.railway_step5')}</li>
           </ol>
           <p className="text-xs text-muted-foreground mt-3">
-            Las variables <code className="bg-muted px-1 rounded">DATABASE_URL</code> y{' '}
-            <code className="bg-muted px-1 rounded">REDIS_URL</code> se configuran automáticamente
-            al vincular los servicios de PostgreSQL y Redis en Railway.
+            {t('config.railway_note', { db: 'DATABASE_URL', redis: 'REDIS_URL' })}
           </p>
         </CardContent>
       </Card>

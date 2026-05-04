@@ -5,22 +5,23 @@ import { Badge } from '@/components/ui/primitives';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/primitives';
 import { Label } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
+import { useI18n } from '@/lib/i18n';
 
 interface PlatformDef {
   id: string;
   name: string;
   icon: string;
-  description: string;
+  descriptionKey: string;
   oauthPlatform: string;
 }
 
 const platforms: PlatformDef[] = [
-  { id: 'instagram', name: 'Instagram', icon: '📷', description: 'Fotos, reels, stories y carruseles', oauthPlatform: 'instagram' },
-  { id: 'facebook', name: 'Facebook', icon: '📘', description: 'Páginas y grupos', oauthPlatform: 'facebook' },
-  { id: 'tiktok', name: 'TikTok', icon: '🎵', description: 'Videos cortos y contenido viral', oauthPlatform: 'tiktok' },
-  { id: 'linkedin', name: 'LinkedIn', icon: '💼', description: 'Contenido corporativo y profesional', oauthPlatform: 'linkedin' },
-  { id: 'x', name: 'X (Twitter)', icon: '𝕏', description: 'Tweets, hilos e interacción', oauthPlatform: 'x' },
-  { id: 'threads', name: 'Threads', icon: '🧵', description: 'Publicaciones en Meta Threads', oauthPlatform: 'threads' },
+  { id: 'instagram', name: 'Instagram', icon: '📷', descriptionKey: 'settings.platform_instagram', oauthPlatform: 'instagram' },
+  { id: 'facebook', name: 'Facebook', icon: '📘', descriptionKey: 'settings.platform_facebook', oauthPlatform: 'facebook' },
+  { id: 'tiktok', name: 'TikTok', icon: '🎵', descriptionKey: 'settings.platform_tiktok', oauthPlatform: 'tiktok' },
+  { id: 'linkedin', name: 'LinkedIn', icon: '💼', descriptionKey: 'settings.platform_linkedin', oauthPlatform: 'linkedin' },
+  { id: 'x', name: 'X (Twitter)', icon: '𝕏', descriptionKey: 'settings.platform_x', oauthPlatform: 'x' },
+  { id: 'threads', name: 'Threads', icon: '🧵', descriptionKey: 'settings.platform_threads', oauthPlatform: 'threads' },
 ];
 
 function getBackendUrl(): string {
@@ -32,6 +33,7 @@ function getBackendUrl(): string {
 }
 
 export function SettingsPage() {
+  const { t } = useI18n();
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [connectedAccounts, setConnectedAccounts] = useState<any[]>([]);
@@ -119,8 +121,8 @@ export function SettingsPage() {
   return (
     <div className="space-y-8 animate-in max-w-4xl">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Configuración</h1>
-        <p className="text-muted-foreground text-sm mt-1">Conectá tus redes sociales para publicar contenido directamente desde ContentAI</p>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('settings.title')}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{t('settings.subtitle')}</p>
       </div>
 
       {/* Client selector */}
@@ -128,10 +130,10 @@ export function SettingsPage() {
         <CardContent className="p-5">
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Cliente a configurar</Label>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{t('settings.client_label')}</Label>
               <Select value={selectedClientId} onValueChange={setSelectedClientId}>
                 <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Seleccioná un cliente" />
+                  <SelectValue placeholder={t('settings.client_placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {clients.map(c => (
@@ -146,7 +148,7 @@ export function SettingsPage() {
               </Select>
             </div>
             <div className="text-xs text-muted-foreground pt-6">
-              Las conexiones OAuth son por cliente — cada cliente puede tener sus propias cuentas.
+              {t('settings.oauth_notice')}
             </div>
           </div>
         </CardContent>
@@ -157,8 +159,8 @@ export function SettingsPage() {
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center text-white text-sm">🌐</div>
           <div>
-            <h2 className="text-lg font-semibold">Redes Sociales</h2>
-            <p className="text-xs text-muted-foreground">Conectá vía OAuth 2.0 — nunca pedimos tus contraseñas.</p>
+            <h2 className="text-lg font-semibold">{t('settings.social_title')}</h2>
+            <p className="text-xs text-muted-foreground">{t('settings.social_subtitle')}</p>
           </div>
         </div>
 
@@ -180,7 +182,7 @@ export function SettingsPage() {
                     <div className="flex-1">
                       <h3 className="font-semibold text-sm">{platform.name}</h3>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {connected && account?.accountName ? account.accountName : platform.description}
+                        {connected && account?.accountName ? account.accountName : t(platform.descriptionKey)}
                       </p>
                     </div>
                   </div>
@@ -190,7 +192,7 @@ export function SettingsPage() {
                       variant="secondary"
                       className={`text-[10px] px-2 py-0.5 ${connected ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
                     >
-                      {loadingAccounts ? '...' : connected ? '● Conectada' : '○ Disponible'}
+                      {loadingAccounts ? '...' : connected ? t('settings.status_connected') : t('settings.status_available')}
                     </Badge>
 
                     {connected ? (
@@ -201,7 +203,7 @@ export function SettingsPage() {
                         onClick={() => handleDisconnect(platform.oauthPlatform)}
                         disabled={!selectedClientId}
                       >
-                        Desconectar
+                        {t('settings.action_disconnect')}
                       </Button>
                     ) : (
                       <Button
@@ -210,7 +212,7 @@ export function SettingsPage() {
                         className="bg-gradient-to-r from-violet-500 to-violet-600 text-white text-xs shadow-sm"
                         disabled={!selectedClientId}
                       >
-                        Conectar
+                        {t('settings.action_connect')}
                       </Button>
                     )}
                   </div>
@@ -226,8 +228,8 @@ export function SettingsPage() {
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-sky-500 flex items-center justify-center text-white text-sm">📅</div>
           <div>
-            <h2 className="text-lg font-semibold">Integraciones</h2>
-            <p className="text-xs text-muted-foreground">Conectá servicios externos para automatizar tu flujo de trabajo.</p>
+            <h2 className="text-lg font-semibold">{t('settings.integrations_title')}</h2>
+            <p className="text-xs text-muted-foreground">{t('settings.integrations_subtitle')}</p>
           </div>
         </div>
 
@@ -236,8 +238,8 @@ export function SettingsPage() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-xl bg-white flex items-center justify-center text-xl shadow-sm border border-slate-100">📅</div>
               <div className="flex-1">
-                <h3 className="font-semibold text-sm">Google Calendar</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Exporta automáticamente el contenido programado a tu Google Calendar</p>
+                <h3 className="font-semibold text-sm">{t('settings.gcal_title')}</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t('settings.gcal_desc')}</p>
               </div>
             </div>
             <div className="flex items-center justify-between">
@@ -245,15 +247,15 @@ export function SettingsPage() {
                 variant="secondary"
                 className={`text-[10px] px-2 py-0.5 ${googleCalConnected ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
               >
-                {loadingGoogleCal ? '...' : googleCalConnected ? '● Conectado' : '○ Disponible'}
+                {loadingGoogleCal ? '...' : googleCalConnected ? t('settings.status_connected') : t('settings.status_available')}
               </Badge>
               {googleCalConnected ? (
                 <Button size="sm" variant="outline" className="text-red-500 border-red-200 hover:bg-red-50 text-xs" onClick={handleDisconnectGoogleCalendar}>
-                  Desconectar
+                  {t('settings.action_disconnect')}
                 </Button>
               ) : (
                 <Button size="sm" onClick={handleConnectGoogleCalendar} className="bg-gradient-to-r from-blue-500 to-sky-500 text-white text-xs shadow-sm">
-                  Conectar Google Calendar
+                  {t('settings.connect_gcal')}
                 </Button>
               )}
             </div>
@@ -267,19 +269,19 @@ export function SettingsPage() {
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center text-lg shrink-0">🛡️</div>
             <div>
-              <p className="text-sm font-semibold text-violet-900">Seguridad de tus conexiones</p>
+              <p className="text-sm font-semibold text-violet-900">{t('settings.security_title')}</p>
               <ul className="text-xs text-violet-700/70 mt-2 space-y-1.5">
                 <li className="flex items-start gap-1.5">
                   <span className="text-emerald-500 mt-0.5">✓</span>
-                  <span><strong>OAuth 2.0</strong> — Sos redirigido a la página oficial de cada plataforma. Nunca manejamos tus contraseñas.</span>
+                  <span><strong>OAuth 2.0</strong> — {t('settings.oauth_desc')}</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-emerald-500 mt-0.5">✓</span>
-                  <span><strong>Tokens encriptados</strong> — Los Access Tokens se almacenan cifrados con AES-256 y se refrescan automáticamente.</span>
+                  <span><strong>{t('settings.security_encryption')}</strong> — {t('settings.encryption_desc')}</span>
                 </li>
                 <li className="flex items-start gap-1.5">
                   <span className="text-emerald-500 mt-0.5">✓</span>
-                  <span><strong>Por cliente</strong> — Cada cliente tiene sus propias conexiones independientes.</span>
+                  <span><strong>{t('settings.security_isolation')}</strong> — {t('settings.isolation_desc')}</span>
                 </li>
               </ul>
             </div>

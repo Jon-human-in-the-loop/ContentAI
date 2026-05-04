@@ -3,8 +3,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/primitives';
 import { Progress } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
+import { useI18n } from '@/lib/i18n';
 
 export function AnalyticsPage() {
+  const { t, language } = useI18n();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,7 +29,7 @@ export function AnalyticsPage() {
           const costValue = row.total_cost || 0;
           const reqCount = row.requests || 0;
           const cacheHits = row.cache_hits || 0;
-          const modelName = row.model || 'Desconocido';
+          const modelName = row.model || t('dashboard.unspecified');
 
           dailyMap[dateStr] = (dailyMap[dateStr] || 0) + costValue;
           
@@ -70,35 +72,36 @@ export function AnalyticsPage() {
       }
     }
     loadAnalytics();
-  }, []);
+  }, [language]);
 
   if (loading || !data) {
     return (
       <div className="space-y-6 animate-in">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Analytics</h1>
-          <p className="text-muted-foreground text-sm mt-1">Cargando datos...</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('analytics.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('analytics.loading')}</p>
         </div>
       </div>
     );
   }
 
   const maxCost = Math.max(...data.dailyCosts.map((d: any) => d.cost), 0.01);
+  const locale = language === 'es' ? 'es-AR' : 'en-US';
 
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Analytics</h1>
-        <p className="text-muted-foreground text-sm mt-1">Costos de API, uso de tokens y rendimiento</p>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('analytics.title')}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{t('analytics.subtitle')}</p>
       </div>
 
       {/* Top stats */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: 'Gasto del mes', value: `$${data.costs.monthlySpend}`, color: 'from-violet-500 to-violet-600', icon: '$' },
-          { label: 'Llamadas API', value: data.costs.apiCalls.toString(), color: 'from-emerald-500 to-emerald-600', icon: '⚡' },
-          { label: 'Cache hit rate', value: `${data.cacheHitRate}%`, color: 'from-sky-500 to-blue-600', icon: '◈' },
-          { label: 'Tokens usados', value: `${(data.costs.totalTokens / 1e6).toFixed(1)}M`, color: 'from-amber-500 to-orange-500', icon: '✦' },
+          { label: t('analytics.stat_spend'), value: `$${data.costs.monthlySpend}`, color: 'from-violet-500 to-violet-600', icon: '$' },
+          { label: t('analytics.stat_calls'), value: data.costs.apiCalls.toString(), color: 'from-emerald-500 to-emerald-600', icon: '⚡' },
+          { label: t('analytics.stat_cache'), value: `${data.cacheHitRate}%`, color: 'from-sky-500 to-blue-600', icon: '◈' },
+          { label: t('analytics.stat_tokens'), value: `${(data.costs.totalTokens / 1e6).toFixed(1)}M`, color: 'from-amber-500 to-orange-500', icon: '✦' },
         ].map((s, i) => (
           <Card key={i} className="border-0 shadow-sm stat-glow">
             <CardContent className="pt-5 pb-4 px-5">
@@ -121,7 +124,7 @@ export function AnalyticsPage() {
         <div className="col-span-3">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-5">
-              <h3 className="font-semibold mb-4">Costos diarios</h3>
+              <h3 className="font-semibold mb-4">{t('analytics.chart_daily')}</h3>
               <div className="flex items-end gap-2 h-40">
                 {data.dailyCosts.map((day: any) => {
                   const height = (day.cost / maxCost) * 100;
@@ -138,15 +141,15 @@ export function AnalyticsPage() {
                         />
                       </div>
                       <span className="text-[10px] text-muted-foreground">
-                        {date.toLocaleDateString('es-AR', { day: 'numeric' })}
+                        {date.toLocaleDateString(locale, { day: 'numeric' })}
                       </span>
                     </div>
                   );
                 })}
               </div>
               <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-                <span>Últimos 7 días</span>
-                <span>Promedio: ${(data.dailyCosts.reduce((s: number, d: any) => s + d.cost, 0) / data.dailyCosts.length).toFixed(2)}/día</span>
+                <span>{t('analytics.last_7_days')}</span>
+                <span>{t('analytics.average', { amount: (data.dailyCosts.reduce((s: number, d: any) => s + d.cost, 0) / data.dailyCosts.length).toFixed(2) })}</span>
               </div>
             </CardContent>
           </Card>
@@ -156,7 +159,7 @@ export function AnalyticsPage() {
         <div className="col-span-2 space-y-4">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-5">
-              <h3 className="font-semibold mb-4">Uso por modelo</h3>
+              <h3 className="font-semibold mb-4">{t('analytics.chart_models')}</h3>
               <div className="space-y-4">
                 {data.modelBreakdown.map((m: any) => {
                   const colors: Record<string, string> = {
@@ -171,7 +174,7 @@ export function AnalyticsPage() {
                           <div className={`w-2.5 h-2.5 rounded-full ${colors[m.model] || 'bg-gray-400'}`} />
                           <span className="text-sm font-medium">{m.model}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">{m.requests} requests</span>
+                        <span className="text-xs text-muted-foreground">{m.requests} {t('dashboard.requests_label')}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="flex-1 bg-muted/50 rounded-full h-2">
@@ -192,7 +195,7 @@ export function AnalyticsPage() {
           {/* Token budget */}
           <Card className="border-0 shadow-sm">
             <CardContent className="p-5">
-              <h3 className="font-semibold mb-3">Presupuesto mensual</h3>
+              <h3 className="font-semibold mb-3">{t('analytics.tokens_budget')}</h3>
               <div className="relative mb-3">
                 <Progress value={data.costs.tokenBudget.usagePercent} className="h-4 rounded-lg" />
                 <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-white mix-blend-difference">
@@ -202,11 +205,11 @@ export function AnalyticsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/30 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold">{(data.costs.tokenBudget.used / 1e6).toFixed(1)}M</p>
-                  <p className="text-[10px] text-muted-foreground">Tokens usados</p>
+                  <p className="text-[10px] text-muted-foreground">{t('analytics.tokens_used')}</p>
                 </div>
                 <div className="bg-muted/30 rounded-lg p-3 text-center">
                   <p className="text-lg font-bold">{(data.costs.tokenBudget.remaining / 1e6).toFixed(1)}M</p>
-                  <p className="text-[10px] text-muted-foreground">Restantes</p>
+                  <p className="text-[10px] text-muted-foreground">{t('analytics.tokens_remaining')}</p>
                 </div>
               </div>
             </CardContent>
@@ -217,19 +220,19 @@ export function AnalyticsPage() {
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">💰</span>
-                <h3 className="font-semibold text-emerald-800">Ahorro por optimización</h3>
+                <h3 className="font-semibold text-emerald-800">{t('analytics.savings_title')}</h3>
               </div>
               <p className="text-2xl font-bold text-emerald-700 mb-1">$8.42</p>
               <p className="text-xs text-emerald-600/80">
-                Ahorraste un 65% este mes usando routing inteligente de modelos y caché
+                {t('analytics.savings_desc', { percent: 65 })}
               </p>
               <div className="mt-3 pt-3 border-t border-emerald-200/50 space-y-1.5">
                 <div className="flex justify-between text-xs">
-                  <span className="text-emerald-600/80">Sin optimización</span>
+                  <span className="text-emerald-600/80">{t('analytics.no_optimization')}</span>
                   <span className="font-medium text-emerald-800">$21.26</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-emerald-600/80">Con ContentAI</span>
+                  <span className="text-emerald-600/80">{t('analytics.with_contentai')}</span>
                   <span className="font-medium text-emerald-800">${data.costs.monthlySpend}</span>
                 </div>
               </div>

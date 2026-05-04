@@ -75,7 +75,7 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
     if (!selectedClient || !brief.trim()) return;
     setGenerating(true);
     setProgress(5);
-    setProgressLabel('Enviando solicitud...');
+    setProgressLabel(t('generate.sending_request'));
     setResults([]);
     setError(null);
     if (pollRef.current) clearTimeout(pollRef.current);
@@ -95,12 +95,12 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
         }),
       });
       requestId = response.id;
-      setProgressLabel('Generando con IA...');
+      setProgressLabel(t('generate.generating_with_ia'));
       setProgress(15);
-      toast({ message: 'Solicitud enviada. La IA está trabajando...', variant: 'success' });
+      toast({ message: t('generate.toast_sent'), variant: 'success' });
     } catch (err: any) {
-      setError(err?.message || 'Error al crear la solicitud');
-      toast({ message: 'Error al iniciar la generación', variant: 'destructive' });
+      setError(err?.message || t('generate.error_creating'));
+      toast({ message: t('generate.error_starting'), variant: 'destructive' });
       setGenerating(false);
       return;
     }
@@ -119,15 +119,15 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
           const done = pieces.filter((p: any) => p.status !== 'GENERATING');
           const pct = totalPieces > 0 ? 15 + (done.length / totalPieces) * 80 : 15;
           setProgress(Math.min(pct, 95));
-          setProgressLabel(`${done.length}/${totalPieces} piezas listas...`);
+          setProgressLabel(t('generate.pieces_ready', { count: done.length, total: totalPieces }));
 
           const allDone = pieces.length >= totalPieces && done.length === pieces.length;
           if (allDone || attempts >= maxAttempts) {
             setResults(pieces);
             setProgress(100);
-            setProgressLabel('¡Listo!');
+            setProgressLabel(t('common.ready'));
             setGenerating(false);
-            toast({ message: `¡${pieces.length} piezas generadas con éxito!`, variant: 'success' });
+            toast({ message: t('generate.ready_toast', { count: pieces.length }), variant: 'success' });
             return;
           }
         }
@@ -157,9 +157,9 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
     try {
       await api(`/content/pieces/${pieceId}/approve`, { method: 'PATCH' });
       setResults(prev => prev.map(p => p.id === pieceId ? { ...p, status: 'APPROVED' } : p));
-      toast({ message: 'Pieza aprobada', variant: 'success' });
+      toast({ message: t('content.approve_success'), variant: 'success' });
     } catch {
-      toast({ message: 'Error al aprobar la pieza', variant: 'destructive' });
+      toast({ message: t('content.approve_error'), variant: 'destructive' });
     }
   };
 
@@ -266,18 +266,18 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
                     <button 
                       onClick={async () => {
                         const clientInfo = clients.find(c => c.id === selectedClient);
-                        const clientName = clientInfo?.name || 'el cliente';
-                        const industry = clientInfo?.industry || 'su sector principal';
+                        const clientName = clientInfo?.name || (language === 'es' ? 'el cliente' : 'the client');
+                        const industry = clientInfo?.industry || (language === 'es' ? 'su sector principal' : 'their main industry');
                         const toneInfo = clientInfo?.toneOfVoice || clientInfo?.branding?.toneOfVoice || '';
                         
                         setIsGeneratingIdea(true);
                         try {
                           const toneInstruction = toneInfo
-                            ? `El tono de voz de la marca es: "${toneInfo}".`
-                            : `El tono debe ser profesional y persuasivo.`;
+                            ? (language === 'es' ? `El tono de voz de la marca es: "${toneInfo}".` : `The brand voice tone is: "${toneInfo}".`)
+                            : (language === 'es' ? `El tono debe ser profesional y persuasivo.` : `The tone should be professional and persuasive.`);
 
-                          const instruction = `Eres un estratega de contenido digital experto en marketing.
-
+                          const instruction = language === 'es' 
+                            ? `Eres un estratega de contenido digital experto en marketing.
 Tu tarea es escribir un BRIEF DE CONTENIDO (no el contenido en sí). Este brief es un set de instrucciones claras que alguien usará para pedirle a un creador o a una IA que genere el post final.
 
 Datos del cliente:
@@ -295,7 +295,26 @@ El brief debe indicar:
 FORMATO DE SALIDA: Texto plano, máximo 5-6 líneas, redactado como instrucciones directas al creador. Empieza con el tema. Ejemplo de formato correcto:
 "Habla sobre los 3 errores más comunes que cometen [tipo de cliente] al [acción]. El tono debe ser [tono]. El objetivo es que [emoción/acción deseada]. El CTA debe invitar a [acción concreta]. Menciona que [dato o hecho relevante]."
 
-NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. Solo el brief.`;
+NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. Solo el brief.`
+                            : `You are an expert digital content marketing strategist.
+Your task is to write a CONTENT BRIEF (not the content itself). This brief is a set of clear instructions that someone will use to ask a creator or an AI to generate the final post.
+
+Client details:
+- Brand: ${clientName}
+- Niche: ${industry}
+- ${toneInstruction}
+
+The brief should specify:
+1. The TOPIC or specific angle of the post (a problem, common mistake, data, comparison, etc.)
+2. The required TONE and writing style
+3. The OBJECTIVE of the post (what the reader should feel or do)
+4. The explicit CTA (what action you want to provoke)
+5. A specific piece of data or element to include (statistic, anecdote, comparison, etc.)
+
+OUTPUT FORMAT: Plain text, maximum 5-6 lines, written as direct instructions to the creator. Start with the topic. Example of correct format:
+"Talk about the 3 most common mistakes [type of client] make when [action]. The tone should be [tone]. The goal is for [desired emotion/action]. The CTA should invite [specific action]. Mention that [relevant fact or data]."
+
+DO NOT write the post. DO NOT use bullet points. DO NOT add introduction or closing. Just the brief.`;
                           
                           const randomSeed = Math.floor(Math.random() * 100000);
                           const encodedInstruction = encodeURIComponent(instruction);
@@ -310,7 +329,9 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                           }
                         } catch (err) {
                           console.log("Fallback a prompt hardcodeado", err);
-                          setBrief(`Habla sobre los 3 errores más comunes que cometen los prospectos de ${clientName} en el nicho de ${industry}. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición subió drásticamente este año.`);
+                          setBrief(language === 'es' 
+                            ? `Habla sobre los 3 errores más comunes que cometen los prospectos de ${clientName} en el nicho de ${industry}. El tono debe ser directo cuestionando sus métricas actuales. El objetivo es que se den cuenta que están perdiendo dinero y el CTA debe invitarlos a agendar nuestra auditoría o sesión estratégica gratuita. Menciona que el costo de adquisición subió drásticamente este año.`
+                            : `Talk about the 3 most common mistakes made by ${clientName} prospects in the ${industry} niche. The tone should be direct, questioning their current metrics. The goal is to make them realize they are losing money and the CTA should invite them to book our free audit or strategic session. Mention that the acquisition cost has risen drastically this year.`);
                         } finally {
                           setIsGeneratingIdea(false);
                         }
@@ -332,10 +353,10 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                 <div className="mt-2 text-[11px] text-muted-foreground leading-relaxed bg-slate-50 border border-slate-100 p-2.5 rounded-md">
                   <span className="font-medium text-slate-700 block mb-1">{t('generate.tips')}</span>
                   <ul className="list-disc pl-3 space-y-0.5 text-slate-500">
-                    <li><strong>Contexto:</strong> Di de qué trata la pieza y el formato (directo, agresivo, empático).</li>
-                    <li><strong>Objetivo:</strong> Cuál es el llamado a la acción (CTA) deseado.</li>
-                    <li><strong>Particularidad:</strong> Inventa un dato clave o métrica, la IA de ContentAI lo desarrollará.</li>
-                    <li className="text-violet-600/80">O simplemente dale al botón <strong>Dame una idea</strong> para autocompletar usando inteligencia artificial.</li>
+                    <li><strong>{t('generate.tips_context_label')}</strong> {t('generate.tips_context_desc')}</li>
+                    <li><strong>{t('generate.tips_goal_label')}</strong> {t('generate.tips_goal_desc')}</li>
+                    <li><strong>{t('generate.tips_metrics_label')}</strong> {t('generate.tips_metrics_desc')}</li>
+                    <li className="text-violet-600/80">{t('generate.tips_ai_button')}</li>
                   </ul>
                 </div>
               </div>
@@ -361,10 +382,15 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
               </div>
 
               <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-                {[['Total piezas', totalPieces], ['Posts', posts[0]], ['Reels', reels[0]], ['Stories', stories[0]]].map(([k, v]) => (
+                {[
+                  [t('common.total_pieces'), totalPieces],
+                  ['Posts', posts[0]],
+                  ['Reels', reels[0]],
+                  ['Stories', stories[0]]
+                ].map(([k, v]) => (
                   <div key={k as string} className="flex justify-between text-xs text-muted-foreground">
                     <span>{k}</span>
-                    <span className={k === 'Total piezas' ? 'font-semibold text-foreground' : ''}>{v}</span>
+                    <span className={k === t('common.total_pieces') ? 'font-semibold text-foreground' : ''}>{v}</span>
                   </div>
                 ))}
               </div>
@@ -409,13 +435,13 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-emerald-100 mb-3">
                   <span className="text-xl animate-spin">✦</span>
                 </div>
-                <h3 className="font-semibold mb-1">Generando contenido...</h3>
+                <h3 className="font-semibold mb-1">{t('generate.generating_title')}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {progressLabel || `IA trabajando con el brief para ${client?.name}`}
+                  {progressLabel || t('generate.generating_desc', { brand: client?.name })}
                 </p>
                 <Progress value={Math.min(progress, 100)} className="h-2 max-w-xs mx-auto" />
                 <p className="text-xs text-muted-foreground mt-2">
-                  {Math.min(Math.round((progress - 15) / 80 * totalPieces), totalPieces)}/{totalPieces} piezas
+                  {Math.min(Math.round((progress - 15) / 80 * totalPieces), totalPieces)}/{totalPieces} {t('common.total')}
                 </p>
               </CardContent>
             </Card>
@@ -424,9 +450,9 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
           {results.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Contenido Generado</h2>
+                <h2 className="text-lg font-semibold">{t('generate.generated_content')}</h2>
                 <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
-                  {results.length} piezas listas
+                  {results.length} {t('common.total')}
                 </Badge>
               </div>
               {results.map((piece) => {
@@ -454,19 +480,19 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                             <div className="mt-3 space-y-3 pt-3 border-t animate-in" onClick={e => e.stopPropagation()}>
                               {(full?.hook || piece.hook) && (
                                 <div>
-                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Hook</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.hook_label')}</span>
                                   <p className="text-sm text-emerald-700 font-medium mt-0.5">{full?.hook || piece.hook}</p>
                                 </div>
                               )}
                               {full?.cta && (
                                 <div>
-                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">CTA</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.cta_label')}</span>
                                   <p className="text-sm text-violet-700 font-medium mt-0.5">{full.cta}</p>
                                 </div>
                               )}
                               {full?.script && (
                                 <div>
-                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Guión</span>
+                                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('content.script_label')}</span>
                                   <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{full.script}</pre>
                                 </div>
                               )}
@@ -478,7 +504,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                                 </div>
                               )}
                               {!full && (
-                                <p className="text-xs text-muted-foreground animate-pulse">Cargando detalles...</p>
+                                <p className="text-xs text-muted-foreground animate-pulse">{t('generate.details_loading')}</p>
                               )}
 
                               {/* Image generation — POST and CAROUSEL */}
@@ -486,20 +512,20 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                                 <div className="pt-2 space-y-2">
                                   {pieceImages[piece.id] ? (
                                     <div className="rounded-lg overflow-hidden border border-border/50">
-                                      <img src={pieceImages[piece.id]} alt="Imagen generada" className="w-full object-cover max-h-64" />
+                                      <img src={pieceImages[piece.id]} alt={t('generate.generated_image')} className="w-full object-cover max-h-64" />
                                       <div className="flex items-center justify-between px-2 py-1.5 bg-muted/30">
-                                        <span className="text-[10px] text-muted-foreground">Imagen generada con Gemini</span>
+                                        <span className="text-[10px] text-muted-foreground">{t('generate.generated_with_gemini')}</span>
                                         <button className="text-[10px] text-violet-500 hover:underline" onClick={() => handleGenerateImage(piece.id)}>
-                                          Regenerar
+                                          {t('generate.regenerate')}
                                         </button>
                                       </div>
                                     </div>
                                   ) : piecePrompts[piece.id] ? (
                                     <div className="space-y-2">
                                       <div className="flex items-center justify-between">
-                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Prompt de imagen (editable)</span>
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t('generate.image_prompt_label')}</span>
                                         <button className="text-[10px] text-violet-500 hover:underline" onClick={() => handleGeneratePrompt(piece.id)}>
-                                          Regenerar prompt
+                                          {t('generate.regenerate_prompt')}
                                         </button>
                                       </div>
                                       <textarea
@@ -513,7 +539,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                                         onClick={() => handleGenerateImage(piece.id)}
                                         disabled={generatingImages[piece.id]}
                                       >
-                                        {generatingImages[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> Generando...</span> : '✦ Generar imagen con Gemini'}
+                                        {generatingImages[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> {t('common.loading')}</span> : `✦ ${t('generate.generate_image_button')}`}
                                       </Button>
                                     </div>
                                   ) : (
@@ -524,7 +550,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                                       onClick={() => handleGeneratePrompt(piece.id)}
                                       disabled={generatingPrompts[piece.id]}
                                     >
-                                      {generatingPrompts[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> Creando prompt...</span> : '✦ Crear prompt de imagen'}
+                                      {generatingPrompts[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> {t('generate.creating_prompt')}</span> : `✦ ${t('generate.create_prompt_button')}`}
                                     </Button>
                                   )}
                                 </div>
@@ -537,13 +563,13 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                                     <div className="rounded-lg overflow-hidden border border-border/50">
                                       <video src={videoJobs[piece.id].videoUrl} controls className="w-full max-h-64" />
                                       <div className="px-2 py-1.5 bg-muted/30">
-                                        <span className="text-[10px] text-muted-foreground">Video generado con Creatify Aurora</span>
+                                        <span className="text-[10px] text-muted-foreground">{t('generate.video_generated_with')}</span>
                                       </div>
                                     </div>
                                   ) : videoJobs[piece.id]?.status === 'processing' ? (
                                     <div className="flex items-center gap-2 text-xs text-violet-600 bg-violet-50 rounded-lg p-2">
                                       <span className="animate-spin">✦</span>
-                                      <span>Generando video con avatar...</span>
+                                      <span>{t('generate.generating_video')}</span>
                                     </div>
                                   ) : (
                                     <Button
@@ -553,7 +579,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                                       onClick={() => handleGenerateVideo(piece.id)}
                                       disabled={generatingVideos[piece.id]}
                                     >
-                                      {generatingVideos[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> Iniciando...</span> : '▶ Generar video con avatar'}
+                                      {generatingVideos[piece.id] ? <span className="flex items-center gap-1.5"><span className="animate-spin">✦</span> {t('common.loading')}</span> : `▶ ${t('generate.generate_video_button')}`}
                                     </Button>
                                   )}
                                 </div>
@@ -561,13 +587,13 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
 
                               <div className="flex gap-2 pt-2">
                                 <Button size="sm" className="text-xs h-7 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => handleApprove(piece.id)} disabled={piece.status === 'APPROVED'}>
-                                  Aprobar
+                                  {t('generate.approve')}
                                 </Button>
                                 <Button size="sm" variant="outline" className="text-xs h-7 text-red-500 border-red-200 hover:bg-red-50" onClick={() => handleReject(piece.id)} disabled={piece.status === 'REJECTED'}>
-                                  Rechazar
+                                  {t('generate.reject')}
                                 </Button>
                                 <Button size="sm" variant="outline" className="text-xs h-7 ml-auto">
-                                  Programar
+                                  {t('generate.schedule')}
                                 </Button>
                               </div>
                             </div>

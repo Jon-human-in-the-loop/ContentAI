@@ -43,7 +43,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         });
       } else {
         if (!form.name || !form.organizationName) {
-          setError('Completá todos los campos');
+          setError(t('common.required_fields'));
+          setLoading(false);
           return;
         }
         session = await api('/auth/register', {
@@ -60,7 +61,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       saveSession(session);
       onLogin(session);
     } catch (err: any) {
-      setError(err.message || 'Error inesperado');
+      setError(err.message || t('common.unexpected_error'));
     } finally {
       setLoading(false);
     }

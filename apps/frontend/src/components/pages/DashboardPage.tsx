@@ -88,7 +88,7 @@ export function DashboardPage() {
       if (viewingRequest?.id === id) setViewingRequest(null);
     } catch (err) {
       console.error(err);
-      alert('Error eliminando la solicitud.');
+      alert(t('dashboard.error_deleting_request'));
     }
   };
 
@@ -152,7 +152,7 @@ export function DashboardPage() {
         <div className="col-span-3 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{t('dashboard.recent_requests')}</h2>
-            <span className="text-xs text-muted-foreground">{requests.length} requests</span>
+            <span className="text-xs text-muted-foreground">{requests.length} {t('dashboard.requests_label')}</span>
           </div>
           {requests.map((req) => (
             <Card key={req.id} className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingRequest(req)}>
@@ -160,7 +160,7 @@ export function DashboardPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="font-semibold text-sm">{req.client?.name || 'Unknown'}</span>
+                      <span className="font-semibold text-sm">{req.client?.name || t('common.unknown')}</span>
                       <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 ${statusColors[req.status] || ''}`}>
                         {req.status}
                       </Badge>
@@ -182,7 +182,7 @@ export function DashboardPage() {
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteRequest(req.id); }}
                         className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
-                        title="Eliminar request"
+                        title={t('dashboard.delete_request_title')}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                       </button>
@@ -223,7 +223,7 @@ export function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{client.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{client.industry || 'No especificado'}</div>
+                    <div className="text-[11px] text-muted-foreground">{client.industry || t('dashboard.unspecified')}</div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-xs font-medium">{client.totalPieces}</div>
@@ -271,9 +271,9 @@ export function DashboardPage() {
                     {piece.status}
                   </Badge>
                 </div>
-                <p className="text-xs font-medium mb-1">{piece.client?.name || 'Unknown'}</p>
+                <p className="text-xs font-medium mb-1">{piece.client?.name || t('common.unknown')}</p>
                 <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                  {piece.caption || 'Generando...'}
+                  {piece.caption || t('common.generating')}
                 </p>
                 {piece.hashtags && piece.hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
@@ -314,13 +314,13 @@ export function DashboardPage() {
             <div className="flex items-start justify-between gap-4 p-6 border-b sticky top-0 bg-white z-10">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold">{viewingRequest.client?.name || 'Unknown'}</span>
+                  <span className="font-semibold">{viewingRequest.client?.name || t('common.unknown')}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[viewingRequest.status] || 'bg-slate-100'}`}>
                     {viewingRequest.status}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {viewingRequest.completedPieces || 0}/{viewingRequest.totalPieces || 0} piezas completadas
+                  {t('dashboard.completed_pieces', { completed: viewingRequest.completedPieces || 0, total: viewingRequest.totalPieces || 0 })}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -349,10 +349,10 @@ export function DashboardPage() {
             {/* Pieces */}
             <div className="p-6 flex-1">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Piezas generadas ({(viewingRequest.pieces || []).length})
+                {t('dashboard.pieces_generated')} ({(viewingRequest.pieces || []).length})
               </p>
               {(viewingRequest.pieces || []).length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No hay piezas generadas aún</p>
+                <p className="text-sm text-muted-foreground text-center py-8">{t('dashboard.no_pieces_yet')}</p>
               ) : (
                 <div className="space-y-4">
                   {(viewingRequest.pieces || []).map((piece: any, idx: number) => (
@@ -372,7 +372,7 @@ export function DashboardPage() {
                         <p className="text-xs text-violet-600 font-mono leading-relaxed">{piece.hashtags}</p>
                       )}
                       {!piece.caption && !piece.hashtags && (
-                        <p className="text-xs text-muted-foreground italic">Sin contenido generado</p>
+                        <p className="text-xs text-muted-foreground italic">{t('dashboard.no_content_generated')}</p>
                       )}
                     </div>
                   ))}

@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/primitives';
 import { Label } from '@/components/ui/primitives';
 import { ContentPiece } from '@/data/mock';
 import { api } from '@/lib/api';
+import { useI18n } from '@/lib/i18n';
 
 const statusColors: Record<string, string> = {
   GENERATING: 'bg-amber-100 text-amber-700',
@@ -31,6 +32,7 @@ interface SocialAccount {
 }
 
 export function ContentPage() {
+  const { t, language } = useI18n();
   const [pieces, setPieces] = useState<ContentPiece[]>([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -70,7 +72,7 @@ export function ContentPage() {
           (req.pieces || []).map((p: any) => ({
             id: p.id,
             clientId: req.clientId,
-            clientName: req.client?.name || 'Cliente',
+            clientName: req.client?.name || t('generate.client'),
             type: p.type || 'POST',
             platform: p.platform || 'INSTAGRAM',
             status: p.status || 'DRAFT',
@@ -93,7 +95,7 @@ export function ContentPage() {
       }
     }
     loadContent();
-  }, []);
+  }, [language]);
 
   const handleApprove = async (pieceId: string) => {
     setApprovingId(pieceId);
@@ -132,11 +134,11 @@ export function ContentPage() {
 
   const handleSchedule = async () => {
     if (!schedulingPiece || !scheduleForm.platform || !scheduleForm.scheduledAt) {
-      setScheduleError('Completá todos los campos requeridos');
+      setScheduleError(t('content.error_fields'));
       return;
     }
     if (!scheduleForm.socialAccountId) {
-      setScheduleError('Seleccioná una cuenta de red social');
+      setScheduleError(t('content.error_account'));
       return;
     }
     setScheduling(true);
@@ -158,21 +160,21 @@ export function ContentPage() {
       ));
       setSchedulingPiece(null);
     } catch (err: any) {
-      setScheduleError(err.message || 'Error al programar');
+      setScheduleError(err.message || t('common.error'));
     } finally {
       setScheduling(false);
     }
   };
 
   const handleDelete = async (pieceId: string) => {
-    if (!confirm('¿Eliminar esta pieza de contenido?')) return;
+    if (!confirm(t('content.confirm_delete'))) return;
     setDeletingId(pieceId);
     try {
       await api(`/content/pieces/${pieceId}`, { method: 'DELETE' });
       setPieces(prev => prev.filter(p => p.id !== pieceId));
     } catch (err) {
       console.error('Delete failed:', err);
-      alert('No se pudo eliminar la pieza. Intentá de nuevo.');
+      alert(t('content.delete_error'));
     } finally {
       setDeletingId(null);
     }
@@ -220,12 +222,14 @@ export function ContentPage() {
     return acc;
   }, {} as Record<string, number>);
 
+  const locale = language === 'es' ? 'es-AR' : 'en-US';
+
   return (
     <div className="space-y-6 animate-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Contenido</h1>
-          <p className="text-muted-foreground text-sm mt-1">{pieces.length} piezas totales</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t('content.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('content.subtitle', { count: pieces.length })}</p>
         </div>
       </div>
 
@@ -237,7 +241,7 @@ export function ContentPage() {
           className="h-7 text-xs"
           onClick={() => setStatusFilter('all')}
         >
-          Todas ({pieces.length})
+          {t('content.filter_all')} ({pieces.length})
         </Button>
         {Object.entries(statusCounts).map(([status, count]) => (
           <Button
@@ -254,17 +258,17 @@ export function ContentPage() {
 
       <div className="flex items-center gap-3">
         <Input
-          placeholder="Buscar por contenido o cliente..."
+          placeholder={t('content.search_placeholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
         <Tabs value={typeFilter} onValueChange={setTypeFilter}>
           <TabsList className="h-8">
-            <TabsTrigger value="all" className="text-xs px-3 h-6">Todos</TabsTrigger>
-            <TabsTrigger value="POST" className="text-xs px-3 h-6">▦ Posts</TabsTrigger>
-            <TabsTrigger value="REEL" className="text-xs px-3 h-6">▶ Reels</TabsTrigger>
-            <TabsTrigger value="STORY" className="text-xs px-3 h-6">◯ Stories</TabsTrigger>
+            <TabsTrigger value="all" className="text-xs px-3 h-6">{t('content.type_all')}</TabsTrigger>
+            <TabsTrigger value="POST" className="text-xs px-3 h-6">{t('content.type_post')}</TabsTrigger>
+            <TabsTrigger value="REEL" className="text-xs px-3 h-6">{t('content.type_reel')}</TabsTrigger>
+            <TabsTrigger value="STORY" className="text-xs px-3 h-6">{t('content.type_story')}</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -289,17 +293,17 @@ export function ContentPage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-semibold">{piece.clientName}</span>
                 <span className="text-[10px] text-muted-foreground">
-                  {new Date(piece.createdAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                  {new Date(piece.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'short' })}
                 </span>
               </div>
 
               <p className="text-sm leading-relaxed text-foreground/80 mb-3">
-                {piece.caption || <span className="italic text-muted-foreground">Generando...</span>}
+                {piece.caption || <span className="italic text-muted-foreground">{t('content.status_generating')}</span>}
               </p>
 
               {piece.hook && (
                 <div className="mb-2">
-                  <span className="text-[10px] uppercase text-muted-foreground tracking-wider">Hook:</span>
+                  <span className="text-[10px] uppercase text-muted-foreground tracking-wider">{t('content.hook_label')}:</span>
                   <p className="text-xs text-emerald-600 font-medium">{piece.hook}</p>
                 </div>
               )}
@@ -325,17 +329,17 @@ export function ContentPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground" onClick={() => setViewingPiece(piece)}>Ver</Button>
+                  <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-muted-foreground hover:text-foreground" onClick={() => setViewingPiece(piece)}>{t('content.action_view')}</Button>
                   {piece.status === 'DRAFT' && (
                     <>
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openEdit(piece)}>Editar</Button>
+                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openEdit(piece)}>{t('content.action_edit')}</Button>
                       <Button
                         size="sm"
                         className="h-6 text-[10px] px-2 bg-emerald-500 text-white hover:bg-emerald-600"
                         disabled={approvingId === piece.id}
                         onClick={() => handleApprove(piece.id)}
                       >
-                        {approvingId === piece.id ? '...' : 'Aprobar'}
+                        {approvingId === piece.id ? '...' : t('content.action_approve')}
                       </Button>
                     </>
                   )}
@@ -346,22 +350,22 @@ export function ContentPage() {
                       className="h-6 text-[10px] px-2 border-violet-300 text-violet-600 hover:bg-violet-50"
                       onClick={() => openScheduleModal(piece)}
                     >
-                      📅 Programar
+                      {t('content.action_schedule')}
                     </Button>
                   )}
                   {(piece.status === 'SCHEDULED' || piece.scheduledAt) && (
                     <span className="text-[10px] text-violet-600 font-medium">
-                      📅 {new Date(piece.scheduledAt!).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      📅 {new Date(piece.scheduledAt!).toLocaleDateString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
                   )}
                   {piece.status === 'PUBLISHED' && (
-                    <span className="text-[10px] text-emerald-600 font-medium">✓ Publicado</span>
+                    <span className="text-[10px] text-emerald-600 font-medium">{t('content.status_published')}</span>
                   )}
                   <button
                     onClick={() => handleDelete(piece.id)}
                     disabled={deletingId === piece.id}
                     className="h-6 w-6 flex items-center justify-center rounded text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                    title="Eliminar pieza"
+                    title={t('content.action_delete')}
                   >
                     {deletingId === piece.id ? '…' : '🗑'}
                   </button>
@@ -374,7 +378,7 @@ export function ContentPage() {
 
       {filtered.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No se encontraron piezas con esos filtros</p>
+          <p className="text-muted-foreground">{t('content.empty_results')}</p>
         </div>
       )}
 
@@ -391,7 +395,7 @@ export function ContentPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[viewingPiece.status]}`}>{viewingPiece.status}</span>
                   </div>
                   <h2 className="text-lg font-semibold">{viewingPiece.clientName}</h2>
-                  <p className="text-xs text-muted-foreground">{new Date(viewingPiece.createdAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  <p className="text-xs text-muted-foreground">{new Date(viewingPiece.createdAt).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
                 <button onClick={() => setViewingPiece(null)} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
               </div>
@@ -399,26 +403,26 @@ export function ContentPage() {
               <div className="space-y-4">
                 {viewingPiece.hook && (
                   <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-medium mb-1">🎣 Hook</p>
+                    <p className="text-[10px] uppercase tracking-wider text-emerald-600 font-medium mb-1">🎣 {t('content.hook_label')}</p>
                     <p className="text-sm font-medium text-emerald-800">{viewingPiece.hook}</p>
                   </div>
                 )}
 
                 <div className="bg-muted/40 rounded-lg p-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">📝 Caption</p>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewingPiece.caption || 'Sin caption'}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">📝 {t('content.caption_label')}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewingPiece.caption || t('content.empty_caption')}</p>
                 </div>
 
                 {viewingPiece.script && (
                   <div className="bg-muted/40 rounded-lg p-4">
-                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">🎬 Script</p>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">🎬 {t('content.script_label')}</p>
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{viewingPiece.script}</p>
                   </div>
                 )}
 
                 {viewingPiece.cta && (
                   <div className="bg-violet-50 border border-violet-100 rounded-lg p-3">
-                    <p className="text-[10px] uppercase tracking-wider text-violet-600 font-medium mb-1">📣 CTA</p>
+                    <p className="text-[10px] uppercase tracking-wider text-violet-600 font-medium mb-1">📣 {t('content.cta_label')}</p>
                     <p className="text-sm text-violet-800">{viewingPiece.cta}</p>
                   </div>
                 )}
@@ -440,8 +444,8 @@ export function ContentPage() {
                     {viewingPiece.generationCost > 0 && <span className="text-xs text-muted-foreground">${viewingPiece.generationCost.toFixed(5)}</span>}
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => { setViewingPiece(null); openEdit(viewingPiece); }}>✏️ Editar</Button>
-                    <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => { setViewingPiece(null); handleDelete(viewingPiece.id); }}>🗑 Eliminar</Button>
+                    <Button variant="outline" size="sm" onClick={() => { setViewingPiece(null); openEdit(viewingPiece); }}>✏️ {t('common.edit')}</Button>
+                    <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50 hover:border-red-200" onClick={() => { setViewingPiece(null); handleDelete(viewingPiece.id); }}>🗑 {t('common.delete')}</Button>
                   </div>
                 </div>
               </div>
@@ -455,12 +459,12 @@ export function ContentPage() {
       {editingPiece && typeof window !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto' }} onClick={() => setEditingPiece(null)}>
           <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-              <h2 className="text-lg font-semibold mb-0.5">Editar pieza</h2>
+            <div className="bg-background rounded-xl shadow-xl p-6 w-full max-lg" onClick={e => e.stopPropagation()}>
+              <h2 className="text-lg font-semibold mb-0.5">{t('content.edit_title')}</h2>
               <p className="text-xs text-muted-foreground mb-5">{editingPiece.clientName} · {editingPiece.type}</p>
               <div className="space-y-4">
                 <div>
-                  <Label className="text-xs">Caption</Label>
+                  <Label className="text-xs">{t('content.field_caption')}</Label>
                   <textarea
                     className="mt-1 w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:border-violet-400 resize-none"
                     value={editForm.caption}
@@ -468,18 +472,18 @@ export function ContentPage() {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs">Hashtags (separados por coma)</Label>
+                  <Label className="text-xs">{t('content.field_hashtags_label')}</Label>
                   <input
                     className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-violet-400"
                     value={editForm.hashtags}
                     onChange={e => setEditForm(f => ({ ...f, hashtags: e.target.value }))}
-                    placeholder="fitness, salud, bienestar"
+                    placeholder={t('content.field_hashtags_placeholder')}
                   />
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <Button variant="outline" className="flex-1 text-sm h-9" onClick={() => setEditingPiece(null)}>Cancelar</Button>
+                  <Button variant="outline" className="flex-1 text-sm h-9" onClick={() => setEditingPiece(null)}>{t('common.cancel')}</Button>
                   <Button className="flex-1 text-sm h-9 bg-gradient-to-r from-violet-500 to-violet-600 text-white" onClick={handleSaveEdit} disabled={editSaving}>
-                    {editSaving ? 'Guardando...' : 'Guardar cambios'}
+                    {editSaving ? t('common.save') + '...' : t('common.save')}
                   </Button>
                 </div>
               </div>
@@ -498,10 +502,10 @@ export function ContentPage() {
           <div style={{ display: 'flex', minHeight: '100%', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
             <div
               className="bg-background rounded-xl shadow-xl p-6 w-full max-w-md"
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4">
-                <h2 className="text-lg font-semibold">Programar publicación</h2>
+                <h2 className="text-lg font-semibold">{t('content.dialog_schedule_title')}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {schedulingPiece.clientName} · {schedulingPiece.type}
                 </p>
@@ -516,7 +520,7 @@ export function ContentPage() {
 
                 {/* Platform selector */}
                 <div>
-                  <Label className="text-xs">Plataforma *</Label>
+                  <Label className="text-xs">{t('content.field_platform')}</Label>
                   <div className="grid grid-cols-3 gap-2 mt-1">
                     {['INSTAGRAM', 'FACEBOOK', 'LINKEDIN', 'X', 'TIKTOK', 'THREADS'].map(p => (
                       <button
@@ -538,17 +542,17 @@ export function ContentPage() {
 
                 {/* Social account selector */}
                 <div>
-                  <Label className="text-xs">Cuenta conectada *</Label>
+                  <Label className="text-xs">{t('content.field_account')}</Label>
                   {socialAccounts.filter(a => a.platform === scheduleForm.platform).length === 0 ? (
                     <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                       <p className="text-xs text-amber-700">
-                        No hay cuentas de {scheduleForm.platform} conectadas para este cliente.
+                        {t('content.no_accounts', { platform: scheduleForm.platform })}
                       </p>
                       <a
                         href={`/api/v1/oauth/${scheduleForm.platform.toLowerCase()}/authorize?clientId=${schedulingPiece.clientId}`}
                         className="text-xs text-violet-600 underline mt-1 inline-block"
                       >
-                        Conectar ahora →
+                        {t('content.connect_now')}
                       </a>
                     </div>
                   ) : (
@@ -557,13 +561,13 @@ export function ContentPage() {
                       value={scheduleForm.socialAccountId}
                       onChange={e => setScheduleForm(f => ({ ...f, socialAccountId: e.target.value }))}
                     >
-                      <option value="">Seleccioná una cuenta</option>
+                      <option value="">{t('content.select_account')}</option>
                       {socialAccounts
                         .filter(a => a.platform === scheduleForm.platform)
                         .map(a => (
                           <option key={a.id} value={a.id} disabled={a.isExpired}>
                             {a.accountName || a.accountId || a.platform}
-                            {a.isExpired ? ' (token vencido)' : ''}
+                            {a.isExpired ? ' ' + t('content.token_expired') : ''}
                           </option>
                         ))}
                     </select>
@@ -572,7 +576,7 @@ export function ContentPage() {
 
                 {/* Date/time picker */}
                 <div>
-                  <Label className="text-xs">Fecha y hora de publicación *</Label>
+                  <Label className="text-xs">{t('content.field_datetime')}</Label>
                   <input
                     type="datetime-local"
                     className="mt-1 w-full h-9 rounded-md border border-input bg-background px-3 text-xs"
@@ -594,14 +598,14 @@ export function ContentPage() {
                     className="flex-1 text-xs h-9"
                     onClick={() => setSchedulingPiece(null)}
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     className="flex-1 text-xs h-9 bg-gradient-to-r from-violet-500 to-violet-600 text-white"
                     onClick={handleSchedule}
                     disabled={scheduling || !scheduleForm.socialAccountId || !scheduleForm.scheduledAt}
                   >
-                    {scheduling ? 'Programando...' : '📅 Confirmar'}
+                    {scheduling ? t('content.scheduling') : t('content.schedule_confirm')}
                   </Button>
                 </div>
               </div>
