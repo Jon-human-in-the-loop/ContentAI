@@ -2,53 +2,69 @@ import { Controller, Get, Put, Body, Request } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { execSync } from 'child_process';
 
-// Available Claude models — Anthropic official lineup May 2026
+// Available Claude models — Final May 2026 lineup
 export const CLAUDE_MODELS = [
+  // ── Experimental / Mythic ─────────────────────────────────────────────
+  {
+    id: 'claude-mythos-preview',
+    label: 'Claude Mythos Preview',
+    tier: 'ultra',
+    description: 'El modelo más potente y experimental. Capacidades de razonamiento extremas (Thinking 1M).',
+    inputCost: 15.00, outputCost: 75.00, // Estimado para modelo experimental superior
+  },
+
   // ── Opus (ultra) ──────────────────────────────────────────────────────
   {
     id: 'claude-opus-4-7',
     label: 'Claude Opus 4.7',
     tier: 'ultra',
-    description: 'El modelo más avanzado. Razonamiento superior, codificación y multimodal.',
+    description: 'Mejora significativa en ingeniería de software y tareas complejas.',
     inputCost: 5.00, outputCost: 25.00,
   },
   {
-    id: 'claude-opus-4',
-    label: 'Claude Opus 4',
+    id: 'claude-opus-4.6',
+    label: 'Claude Opus 4.6',
     tier: 'ultra',
-    description: 'Versión anterior de Opus. Muy capaz para tareas exigentes.',
+    description: 'Ventana de 1M tokens. Excelente para codificación y agentes.',
     inputCost: 5.00, outputCost: 25.00,
   },
 
   // ── Sonnet (premium) ──────────────────────────────────────────────────
   {
-    id: 'claude-sonnet-4',
-    label: 'Claude Sonnet 4',
+    id: 'claude-sonnet-4.6',
+    label: 'Claude Sonnet 4.6',
     tier: 'premium',
-    description: 'Equilibrio ideal entre inteligencia y velocidad a costo razonable.',
+    description: 'Equilibrio extraordinario. Supera a Opus 4.5 en muchas tareas.',
     inputCost: 3.00, outputCost: 15.00,
   },
   {
-    id: 'claude-sonnet-3-7',
-    label: 'Claude Sonnet 3.7',
+    id: 'claude-sonnet-4.5',
+    label: 'Claude Sonnet 4.5',
     tier: 'premium',
-    description: 'Versión anterior de Sonnet. Buen rendimiento general y rentable.',
+    description: 'Versión estable para aplicaciones de producción.',
+    inputCost: 3.00, outputCost: 15.00,
+  },
+  {
+    id: 'claude-3-7-sonnet',
+    label: 'Claude 3.7 Sonnet',
+    tier: 'premium',
+    description: 'Modelo con capacidades de razonamiento (thinking) integradas.',
     inputCost: 3.00, outputCost: 15.00,
   },
 
   // ── Haiku (lite) ──────────────────────────────────────────────────────
   {
-    id: 'claude-haiku-3-5',
-    label: 'Claude Haiku 3.5',
+    id: 'claude-haiku-4.5',
+    label: 'Claude Haiku 4.5',
     tier: 'lite',
-    description: 'Modelo más rápido y compacto para respuestas instantáneas.',
-    inputCost: 0.80, outputCost: 4.00,
+    description: 'El modelo más rápido y económico de la serie 4.',
+    inputCost: 1.00, outputCost: 5.00,
   },
   {
-    id: 'claude-haiku-3',
-    label: 'Claude Haiku 3',
+    id: 'claude-3-5-haiku',
+    label: 'Claude 3.5 Haiku',
     tier: 'lite',
-    description: 'Versión anterior de Haiku. El modelo más económico.',
+    description: 'Extremadamente rápido y eficiente para baja latencia.',
     inputCost: 0.25, outputCost: 1.25,
   },
 ];
