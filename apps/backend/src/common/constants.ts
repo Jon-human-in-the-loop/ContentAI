@@ -19,7 +19,7 @@ export const AI_MODELS = {
   SONNET_3_7:  'claude-3-7-sonnet-20260210',
 
   // Opus family
-  OPUS_4_0:    'claude-4-0-opus-20260401',
+  OPUS_4_7:    'claude-4-7-opus-20260420',
 
   // Aliases for the default routing
   PREMIUM: 'claude-3-7-sonnet-20260210',
@@ -49,7 +49,7 @@ export const TASK_MODEL_MAP: Record<string, string> = {
  * Haiku 3.5:   $0.80 / $4.00
  * Haiku 3.7:   $1.00 / $5.00
  * Sonnet 3.5/3.7: $3.00 / $15.00
- * Opus 4.0:    $5.00 / $25.00
+ * Opus 4.7:    $5.00 / $25.00
  */
 export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   // Haiku family
@@ -61,7 +61,7 @@ export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   [AI_MODELS.SONNET_3_7]: { input: 3.00, output: 15.00 },
 
   // Opus family
-  [AI_MODELS.OPUS_4_0]:   { input: 5.00,  output: 25.00 },
+  [AI_MODELS.OPUS_4_7]:   { input: 5.00,  output: 25.00 },
 };
 
 /**

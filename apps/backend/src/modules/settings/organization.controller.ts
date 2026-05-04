@@ -39,10 +39,10 @@ export const CLAUDE_MODELS = [
 
   // ── Opus (ultra) ──────────────────────────────────────────────────────
   {
-    id: 'claude-4-0-opus-20260401',
-    label: 'Claude 4.0 Opus',
+    id: 'claude-4-7-opus-20260420',
+    label: 'Claude 4.7 Opus',
     tier: 'ultra',
-    description: 'Máxima calidad — para estrategia y contenido de alto impacto',
+    description: 'Máxima potencia de razonamiento y creatividad — ideal para estrategia de marca',
     inputCost: 5.00, outputCost: 25.00,
   },
 ];
