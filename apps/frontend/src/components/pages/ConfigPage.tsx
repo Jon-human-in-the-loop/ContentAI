@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
+import { useI18n } from '@/lib/i18n';
 
 interface ServiceStatus {
   configured: boolean;
