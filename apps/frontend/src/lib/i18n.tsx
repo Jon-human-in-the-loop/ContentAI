@@ -489,12 +489,6 @@ const translations: Translations = {
     'dashboard.requests_count': '{count} requests',
     'dashboard.unspecified': 'Unspecified',
     'dashboard.delete_request_title': 'Delete request',
-    'dashboard.requests_label': 'requests',
-    'dashboard.pieces_generated': 'Pieces generated',
-    'dashboard.no_pieces_yet': 'No pieces generated yet',
-    'dashboard.no_content_generated': 'No content generated',
-    'dashboard.completed_pieces': '{completed}/{total} pieces completed',
-    'dashboard.error_deleting_request': 'Error deleting request.',
 
     // Clients
     'clients.title': 'Clients',
