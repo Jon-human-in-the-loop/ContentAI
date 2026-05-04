@@ -27,7 +27,7 @@ Una agencia usa ContentAI para gestionar todos sus clientes desde un mismo lugar
 | Base de datos | PostgreSQL |
 | Cola de trabajos | BullMQ + Redis |
 | Storage de archivos | S3 / MinIO |
-| IA - Texto | Anthropic Claude (Sonnet 4 + Haiku 4.5) |
+| IA - Texto | Anthropic Claude (Mythos, Opus 4.7, Sonnet 4.6, Haiku 4.5) |
 | IA - Imágenes | Google Gemini 2.0 Flash |
 | IA - Videos | Creatify Aurora |
 | Redes sociales | Meta Graph API, LinkedIn API, X API v2 |
@@ -281,11 +281,12 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 | Cuentas de redes sociales (OAuth) | ✅ Completo | Meta, LinkedIn, X, TikTok, Threads |
 | Google Calendar sync | ✅ Completo | Export de eventos al programar |
 | Cost tracking | ✅ Completo | Dashboard de costos por modelo |
+| Selector de Modelos | ✅ Completo | Soporte para Mythos, Opus 4.7 y Sonnet 4.6 |
 | Login/Register UI | ✅ Completo | Pantalla con tabs login/registro |
 | JWT en peticiones API | ✅ Completo | api.ts envía Bearer token automáticamente |
 | Lazy loading de páginas | ✅ Completo | next/dynamic — bundle inicial reducido |
 | Registro/Login JWT | ✅ Completo | API + UI funcionales |
-| Multi-tenancy | ✅ Completo | Aislamiento por orgId |
+| Multi-tenancy | ✅ Completo | Aislamiento real por orgId (sin hardcoded IDs) |
 
 ### ⚠️ Pendiente para pruebas
 
@@ -316,12 +317,10 @@ Abre la app en el navegador → aparece el login → tab "Crear cuenta" → comp
 **Opción B — Script de seed**:
 ```bash
 cd apps/backend
-# Asegúrate de tener DATABASE_URL en .env
+# Configura INITIAL_ADMIN_EMAIL e INITIAL_ADMIN_PASSWORD en .env
 npx ts-node prisma/seed-admin.ts
 ```
-Creará el usuario:
-- Email: `admin@contentai.app`
-- Password: `ContentAI2025!`
+Creará el usuario con las credenciales que hayas definido en tu archivo `.env`.
 
 **Opción C — Mediante curl** (si el backend está levantado):
 ```bash
@@ -437,8 +436,9 @@ certbot --nginx -d api.tudominio.com -d app.tudominio.com
 
 | Tarea | Modelo | Costo aprox por pieza |
 |-------|--------|----------------------|
-| Caption POST | Claude Sonnet 4 | $0.008 |
-| Script REEL | Claude Sonnet 4 | $0.015 |
+| Análisis Estratégico | Claude Mythos Preview | $0.050 |
+| Caption POST | Claude Sonnet 4.6 | $0.008 |
+| Script REEL | Claude Opus 4.7 | $0.025 |
 | Hashtags | Claude Haiku 4.5 | $0.001 |
 | Prompt de imagen | Claude Haiku 4.5 | $0.001 |
 | Imagen | Gemini 2.0 Flash | $0.004 |
