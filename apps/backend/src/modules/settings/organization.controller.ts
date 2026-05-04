@@ -1,72 +1,48 @@
-import { Controller, Get, Put, Body } from '@nestjs/common';
+import { Controller, Get, Put, Body, Request } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { execSync } from 'child_process';
 
-// TODO: Replace with authenticated user's org JWT
-const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
-
-// Available Claude models — Anthropic official pricing April 2026
+// Available Claude models — Anthropic official pricing May 2026
 // Prices in USD per 1M tokens
 export const CLAUDE_MODELS = [
   // ── Haiku (economical) ────────────────────────────────────────────────
   {
-    id: 'claude-haiku-3-20240307',
-    label: 'Claude Haiku 3',
+    id: 'claude-3-5-haiku-20241022',
+    label: 'Claude 3.5 Haiku',
     tier: 'lite',
-    description: 'Ultra-económico — ideal para alta cadencia y prototipos',
-    inputCost: 0.25, outputCost: 1.25,
-  },
-  {
-    id: 'claude-haiku-3-5-20241022',
-    label: 'Claude Haiku 3.5',
-    tier: 'lite',
-    description: 'Rápido y económico — buena relación calidad/costo',
+    description: 'Rápido y económico — ideal para alto volumen',
     inputCost: 0.80, outputCost: 4.00,
   },
   {
-    id: 'claude-haiku-4-5-20251001',
-    label: 'Claude Haiku 4.5',
+    id: 'claude-3-7-haiku-20251101',
+    label: 'Claude 3.7 Haiku',
     tier: 'lite',
-    description: 'El Haiku más capaz — alto volumen a bajo costo',
+    description: 'Mejor razonamiento en el modelo más ligero',
     inputCost: 1.00, outputCost: 5.00,
   },
 
   // ── Sonnet (balanced) ─────────────────────────────────────────────────
   {
-    id: 'claude-sonnet-4-20250514',
-    label: 'Claude Sonnet 4',
+    id: 'claude-3-5-sonnet-20240620',
+    label: 'Claude 3.5 Sonnet',
     tier: 'premium',
-    description: 'Equilibrado — calidad y velocidad óptimas',
+    description: 'Equilibrado — el estándar de la industria',
     inputCost: 3.00, outputCost: 15.00,
   },
   {
-    id: 'claude-sonnet-4-5-20251015',
-    label: 'Claude Sonnet 4.5',
+    id: 'claude-3-7-sonnet-20260210',
+    label: 'Claude 3.7 Sonnet (Mejorado)',
     tier: 'premium',
-    description: 'Mayor coherencia narrativa y creatividad',
-    inputCost: 3.00, outputCost: 15.00,
-  },
-  {
-    id: 'claude-sonnet-4-6-20251101',
-    label: 'Claude Sonnet 4.6',
-    tier: 'premium',
-    description: 'Última versión Sonnet — rendimiento premium al mismo precio',
+    description: 'Última versión Sonnet — capacidades de codificación y narrativa superiores',
     inputCost: 3.00, outputCost: 15.00,
   },
 
   // ── Opus (ultra) ──────────────────────────────────────────────────────
   {
-    id: 'claude-opus-4-5-20251101',
-    label: 'Claude Opus 4.5',
+    id: 'claude-4-0-opus-20260401',
+    label: 'Claude 4.0 Opus',
     tier: 'ultra',
-    description: 'Máxima calidad — copywriting y estrategia de alto impacto',
-    inputCost: 5.00, outputCost: 25.00,
-  },
-  {
-    id: 'claude-opus-4-6-20251201',
-    label: 'Claude Opus 4.6',
-    tier: 'ultra',
-    description: 'El modelo más potente de Anthropic — 1M contexto',
+    description: 'Máxima calidad — para estrategia y contenido de alto impacto',
     inputCost: 5.00, outputCost: 25.00,
   },
 ];
@@ -77,9 +53,10 @@ export class OrganizationController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get('current')
-  async getCurrent() {
+  async getCurrent(@Request() req) {
+    const orgId = req.user.orgId;
     const org = await this.prisma.organization.findUnique({
-      where: { id: DEFAULT_ORG_ID },
+      where: { id: orgId },
       select: {
         id: true,
         name: true,
@@ -91,7 +68,7 @@ export class OrganizationController {
 
     if (!org) {
       return {
-        id: DEFAULT_ORG_ID,
+        id: orgId,
         name: 'Mi Agencia',
         plan: 'STARTER',
         tokensUsed: 0,
@@ -103,11 +80,12 @@ export class OrganizationController {
   }
 
   @Put('current')
-  async updateCurrent(@Body() body: { name: string }) {
+  async updateCurrent(@Request() req, @Body() body: { name: string }) {
     if (!body.name?.trim()) return { error: 'Name is required' };
+    const orgId = req.user.orgId;
 
     return this.prisma.organization.update({
-      where: { id: DEFAULT_ORG_ID },
+      where: { id: orgId },
       data: { name: body.name },
       select: { id: true, name: true, plan: true },
     });
@@ -118,14 +96,15 @@ export class OrganizationController {
    * Returns the current preferred model and the full list of available models
    */
   @Get('ai-model')
-  async getAiModel() {
+  async getAiModel(@Request() req) {
+    const orgId = req.user.orgId;
     const org = await this.prisma.organization.findUnique({
-      where: { id: DEFAULT_ORG_ID },
+      where: { id: orgId },
       select: { preferredModel: true } as any,
     });
 
     return {
-      current: (org as any)?.preferredModel || 'claude-haiku-4-5',
+      current: (org as any)?.preferredModel || 'claude-3-5-sonnet-20240620',
       models: CLAUDE_MODELS,
     };
   }
@@ -135,7 +114,8 @@ export class OrganizationController {
    * Updates the preferred Claude model for this organization
    */
   @Put('ai-model')
-  async setAiModel(@Body() body: { modelId: string }) {
+  async setAiModel(@Request() req, @Body() body: { modelId: string }) {
+    const orgId = req.user.orgId;
     const valid = CLAUDE_MODELS.find(m => m.id === body.modelId);
     if (!valid) {
       return { error: 'Modelo inválido', available: CLAUDE_MODELS.map(m => m.id) };
@@ -143,7 +123,7 @@ export class OrganizationController {
 
     try {
       await this.prisma.organization.update({
-        where: { id: DEFAULT_ORG_ID },
+        where: { id: orgId },
         data: { preferredModel: body.modelId } as any,
       });
 

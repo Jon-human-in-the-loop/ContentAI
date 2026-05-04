@@ -11,23 +11,19 @@ export const QUEUES = {
 // AI Model IDs (Anthropic versioned identifiers)
 export const AI_MODELS = {
   // Haiku family
-  HAIKU_3:     'claude-haiku-3-20240307',
-  HAIKU_3_5:   'claude-haiku-3-5-20241022',
-  HAIKU_4_5:   'claude-haiku-4-5-20251001',
+  HAIKU_3_5:   'claude-3-5-haiku-20241022',
+  HAIKU_3_7:   'claude-3-7-haiku-20251101',
 
   // Sonnet family
-  SONNET_4:    'claude-sonnet-4-20250514',
-  SONNET_4_5:  'claude-sonnet-4-5-20251015',
-  SONNET_4_6:  'claude-sonnet-4-6-20251101',
+  SONNET_3_5:  'claude-3-5-sonnet-20240620',
+  SONNET_3_7:  'claude-3-7-sonnet-20260210',
 
   // Opus family
-  OPUS_4:      'claude-opus-4-20250514',
-  OPUS_4_5:    'claude-opus-4-5-20251101',
-  OPUS_4_6:    'claude-opus-4-6-20251201',
+  OPUS_4_0:    'claude-4-0-opus-20260401',
 
   // Aliases for the default routing
-  PREMIUM: 'claude-sonnet-4-20250514',
-  LITE:    'claude-haiku-4-5-20251001',
+  PREMIUM: 'claude-3-7-sonnet-20260210',
+  LITE:    'claude-3-5-haiku-20241022',
 } as const;
 
 // Task-to-model routing (used when org has no preferredModel override)
@@ -48,31 +44,24 @@ export const TASK_MODEL_MAP: Record<string, string> = {
 } as const;
 
 /**
- * Cost per 1M tokens (USD) — Anthropic official pricing April 2026
- * Source: https://www.anthropic.com/pricing
+ * Cost per 1M tokens (USD) — Anthropic official pricing May 2026
  *
- * Haiku 3:     $0.25 / $1.25
  * Haiku 3.5:   $0.80 / $4.00
- * Haiku 4.5:   $1.00 / $5.00
- * Sonnet 4/4.5/4.6: $3.00 / $15.00
- * Opus 4/4.1 (anterior): $15.00 / $75.00
- * Opus 4.5/4.6 (actual): $5.00 / $25.00
+ * Haiku 3.7:   $1.00 / $5.00
+ * Sonnet 3.5/3.7: $3.00 / $15.00
+ * Opus 4.0:    $5.00 / $25.00
  */
 export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   // Haiku family
-  [AI_MODELS.HAIKU_3]:   { input: 0.25,  output: 1.25  },
   [AI_MODELS.HAIKU_3_5]: { input: 0.80,  output: 4.00  },
-  [AI_MODELS.HAIKU_4_5]: { input: 1.00,  output: 5.00  },
+  [AI_MODELS.HAIKU_3_7]: { input: 1.00,  output: 5.00  },
 
-  // Sonnet family — same price across 4 / 4.5 / 4.6
-  [AI_MODELS.SONNET_4]:   { input: 3.00, output: 15.00 },
-  [AI_MODELS.SONNET_4_5]: { input: 3.00, output: 15.00 },
-  [AI_MODELS.SONNET_4_6]: { input: 3.00, output: 15.00 },
+  // Sonnet family
+  [AI_MODELS.SONNET_3_5]: { input: 3.00, output: 15.00 },
+  [AI_MODELS.SONNET_3_7]: { input: 3.00, output: 15.00 },
 
-  // Opus family — 4/4.1 legacy price, 4.5/4.6 new lower price
-  [AI_MODELS.OPUS_4]:   { input: 15.00, output: 75.00 },
-  [AI_MODELS.OPUS_4_5]: { input: 5.00,  output: 25.00 },
-  [AI_MODELS.OPUS_4_6]: { input: 5.00,  output: 25.00 },
+  // Opus family
+  [AI_MODELS.OPUS_4_0]:   { input: 5.00,  output: 25.00 },
 };
 
 /**
