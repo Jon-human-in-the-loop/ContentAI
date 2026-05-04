@@ -292,18 +292,18 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 
 | Feature | Prioridad | Descripción |
 |---------|-----------|-------------|
-| **Seed de datos de prueba** | 🟡 Media | Script disponible en `prisma/seed-admin.ts` |
+| **Seed de datos de prueba** | ✅ Listo | Script con admin + cliente de prueba + contenido en `prisma/seed-admin.ts` |
 
 ### ⛔ Pendiente para producción
 
 | Feature | Prioridad | Descripción |
 |---------|-----------|-------------|
-| **Guards en todos los endpoints** | 🔴 Crítico | Algunos controllers usan `\|\| 'demo-org'` en vez de JWT |
-| **Variables de entorno reales** | 🔴 Crítico | APIs de redes sociales, S3, Creatify |
-| **Token refresh OAuth** | 🟡 Media | Tokens vencen, no hay auto-refresh |
-| **Error notifications en UI** | 🟡 Media | Cuando falla una publicación no avisa |
-| **Rate limiting** | 🟡 Media | Protección contra abuse |
-| **Monitoreo + alertas** | 🟡 Media | Sentry, Datadog, etc. |
+| **Guards en todos los endpoints** | ✅ Resuelto | Backdoor `demo-org` eliminado del `JwtAuthGuard`. JWT requerido en todos los endpoints. |
+| **Variables de entorno reales** | 🔴 Crítico | APIs de redes sociales (META, LINKEDIN, X), S3, Creatify. Ver sección de variables. |
+| **Token refresh OAuth** | ✅ Resuelto | Auto-refresh para Meta/X implementado en `OAuthService.getValidAccessToken()`. Cron diario de auditoría. |
+| **Error notifications en UI** | ✅ Resuelto | Toast system en frontend + emails de fallo de publicación via `EmailService`. |
+| **Rate limiting** | ✅ Resuelto | Global (20/s, 200/min). Estricto en auth (5/min) y generación de contenido (10/min). |
+| **Monitoreo + alertas** | ✅ Resuelto | Endpoint `/api/v1/health/status` con métricas en tiempo real (orgs, colas, tokens por vencer). |
 
 ---
 

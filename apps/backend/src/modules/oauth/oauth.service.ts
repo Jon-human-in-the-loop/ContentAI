@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 import { EncryptionService } from '../../common/encryption.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 interface OAuthTokenResponse {
   accessToken: string;
@@ -248,6 +249,123 @@ export class OAuthService {
     await this.prisma.clientSocialAccount.delete({
       where: { id: accountId },
     });
+  }
+
+  /**
+   * Get decrypted access token for an account, auto-refreshing if expired
+   */
+  async getValidAccessToken(accountId: string): Promise<string | null> {
+    const account = await this.prisma.clientSocialAccount.findUnique({
+      where: { id: accountId },
+    });
+    if (!account?.accessToken) return null;
+
+    const isExpired = account.tokenExpiresAt ? account.tokenExpiresAt < new Date() : false;
+    if (isExpired && account.refreshToken) {
+      this.logger.log(`Token expired for account ${accountId}, attempting refresh...`);
+      const refreshed = await this.refreshToken(account);
+      if (refreshed) return refreshed;
+    }
+
+    return this.encryption.decrypt(account.accessToken);
+  }
+
+  /**
+   * Refresh a Meta (Instagram/Facebook) long-lived token.
+   * Other platforms: LinkedIn tokens last 60 days (manual reauth required).
+   * X (Twitter): uses OAuth 2.0 refresh_token grant.
+   */
+  private async refreshToken(account: any): Promise<string | null> {
+    const platform = account.platform as string;
+
+    try {
+      if (platform === 'INSTAGRAM' || platform === 'FACEBOOK') {
+        // Meta: exchange for new long-lived token (valid 60 days)
+        const appId = this.config.get('META_APP_ID');
+        const appSecret = this.config.get('META_APP_SECRET');
+        if (!appId || !appSecret) return null;
+
+        const currentToken = this.encryption.decrypt(account.accessToken);
+        const response = await fetch(
+          `https://graph.facebook.com/v19.0/oauth/access_token?` +
+          `grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${currentToken}`,
+        );
+        const data = await response.json();
+
+        if (data.access_token) {
+          const newToken = this.encryption.encrypt(data.access_token);
+          const expiresAt = data.expires_in
+            ? new Date(Date.now() + data.expires_in * 1000)
+            : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 days default
+
+          await this.prisma.clientSocialAccount.update({
+            where: { id: account.id },
+            data: { accessToken: newToken, tokenExpiresAt: expiresAt },
+          });
+
+          this.logger.log(`Meta token refreshed for account ${account.id}, expires: ${expiresAt.toISOString()}`);
+          return data.access_token;
+        }
+      } else if (platform === 'X') {
+        // X OAuth 2.0 refresh_token grant
+        const clientId = this.config.get('X_CLIENT_ID');
+        const clientSecret = this.config.get('X_CLIENT_SECRET');
+        if (!clientId || !clientSecret || !account.refreshToken) return null;
+
+        const refreshToken = this.encryption.decrypt(account.refreshToken);
+        const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+        const response = await fetch('https://api.twitter.com/2/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }).toString(),
+        });
+        const data = await response.json();
+
+        if (data.access_token) {
+          const newAccess = this.encryption.encrypt(data.access_token);
+          const newRefresh = data.refresh_token ? this.encryption.encrypt(data.refresh_token) : account.refreshToken;
+          const expiresAt = data.expires_in
+            ? new Date(Date.now() + data.expires_in * 1000)
+            : null;
+
+          await this.prisma.clientSocialAccount.update({
+            where: { id: account.id },
+            data: { accessToken: newAccess, refreshToken: newRefresh, tokenExpiresAt: expiresAt },
+          });
+
+          this.logger.log(`X token refreshed for account ${account.id}`);
+          return data.access_token;
+        }
+      }
+    } catch (err) {
+      this.logger.error(`Token refresh failed for account ${account.id} (${platform}):`, err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Cron: daily check — warn about tokens expiring in 7 days
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async auditExpiringTokens(): Promise<void> {
+    const warningThreshold = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+    const expiring = await this.prisma.clientSocialAccount.findMany({
+      where: {
+        tokenExpiresAt: { lte: warningThreshold, gte: new Date() },
+      },
+      include: { client: true },
+    });
+
+    if (expiring.length > 0) {
+      this.logger.warn(
+        `⚠️  ${expiring.length} social account token(s) expiring within 7 days: ` +
+        expiring.map((a) => `${a.client?.name} / ${a.platform}`).join(', '),
+      );
+    }
   }
 
   private getRedirectUri(platform: string): string {

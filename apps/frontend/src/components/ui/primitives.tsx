@@ -109,5 +109,56 @@ export function DialogContent({ children, className }: { children: React.ReactNo
     document.body
   );
 }
-export function DialogHeader({ children }: { children: React.ReactNode }) { return <div className="mb-4">{children}</div>; }
-export function DialogTitle({ children }: { children: React.ReactNode }) { return <h2 className="text-lg font-semibold">{children}</h2>; }
+
+// ── Toast System ────────────────────────────────────────────────────────────
+
+interface Toast {
+  id: string;
+  message: string;
+  variant?: 'default' | 'destructive' | 'success';
+}
+
+const ToastCtx = React.createContext<{ toast: (t: Omit<Toast, 'id'>) => void }>({ toast: () => {} });
+
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [toasts, setToasts] = React.useState<Toast[]>([]);
+
+  const toast = React.useCallback(({ message, variant = 'default' }: Omit<Toast, 'id'>) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setToasts((prev) => [...prev, { id, message, variant }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  return (
+    <ToastCtx.Provider value={{ toast }}>
+      {children}
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={cn(
+              "px-4 py-3 rounded-lg shadow-2xl border text-sm font-medium animate-in slide-in-from-right-full transition-all flex items-center justify-between min-w-[280px]",
+              t.variant === 'destructive' ? "bg-red-50 border-red-200 text-red-800" :
+              t.variant === 'success' ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+              "bg-white border-border text-foreground"
+            )}
+          >
+            <span>{t.message}</span>
+            <button 
+              onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
+              className="ml-4 opacity-50 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </div>
+    </ToastCtx.Provider>
+  );
+}
+
+export function useToast() {
+  return React.useContext(ToastCtx);
+}

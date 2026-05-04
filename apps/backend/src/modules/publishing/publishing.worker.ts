@@ -3,6 +3,8 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../database/prisma.service';
 import { PublishingService } from './publishing.service';
+import { OAuthService } from '../oauth/oauth.service';
+import { EmailService } from '../notifications/email.service';
 import { QUEUES } from '../../common/constants';
 
 @Processor(QUEUES.PUBLISH_EXECUTE, { concurrency: 5 })
@@ -12,6 +14,8 @@ export class PublishingWorker extends WorkerHost {
   constructor(
     private prisma: PrismaService,
     private publishingService: PublishingService,
+    private oauthService: OAuthService,
+    private emailService: EmailService,
   ) {
     super();
   }
@@ -39,9 +43,15 @@ export class PublishingWorker extends WorkerHost {
     });
 
     try {
+      // Auto-refresh token if expired before publishing
+      const accessToken = await this.oauthService.getValidAccessToken(queueItem.socialAccountId);
+      if (!accessToken) {
+        throw new Error(`No valid access token found for account ${queueItem.socialAccountId} — please reconnect the social account`);
+      }
+
       const result = await this.publishingService.publish(
         queueItem.platform,
-        queueItem.socialAccount.accessToken!,
+        accessToken,
         {
           caption: queueItem.contentPiece.caption || '',
           hashtags: queueItem.contentPiece.hashtags,
@@ -84,7 +94,27 @@ export class PublishingWorker extends WorkerHost {
         },
       });
 
-      if (queueItem.attempts + 1 < queueItem.maxAttempts) {
+      if (queueItem.attempts + 1 >= queueItem.maxAttempts) {
+        // Permanent failure: notify the org owner via email
+        try {
+          const org = await this.prisma.organization.findUnique({
+            where: { id: queueItem.contentPiece.orgId },
+            include: { users: { where: { role: 'OWNER' }, take: 1 } },
+          });
+          const owner = org?.users?.[0];
+          if (owner && this.emailService.isConfigured()) {
+            await this.emailService.sendPublishFailed(
+              owner.email,
+              owner.name || 'Admin',
+              queueItem.platform,
+              error.message,
+            );
+          }
+        } catch (notifyErr) {
+          this.logger.error('Failed to send failure notification email:', notifyErr);
+        }
+        throw error;
+      } else {
         throw error; // Trigger BullMQ retry
       }
     }

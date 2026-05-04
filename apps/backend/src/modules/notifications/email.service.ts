@@ -142,6 +142,28 @@ export class EmailService {
     );
   }
 
+  async sendPublishFailed(to: string, name: string, platform: string, error: string): Promise<void> {
+    await this.send(
+      to,
+      `⚠️ Publicación fallida en ${platform} — ContentAI`,
+      `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+        <h1 style="color:#ef4444">Publicación fallida</h1>
+        <p>Hola <strong>${name}</strong>,</p>
+        <p>Uno de tus posts programados en <strong>${platform}</strong> no pudo publicarse después de varios intentos.</p>
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin:16px 0">
+          <p style="margin:0;font-size:13px;color:#991b1b"><strong>Error:</strong> ${error}</p>
+        </div>
+        <p>Esto suele ocurrir cuando el token de acceso expiró. Reconectá la cuenta desde Configuración:</p>
+        <a href="${this.getAppUrl()}?settings=true&section=social" style="background:#7c3aed;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;margin-top:16px">
+          Reconectar cuenta →
+        </a>
+        <p style="color:#666;font-size:12px;margin-top:32px">ContentAI — Tu agencia de contenido con IA</p>
+      </div>
+      `,
+    );
+  }
+
   private getAppUrl(): string {
     return this.config.get('FRONTEND_URL', 'http://localhost:3000');
   }

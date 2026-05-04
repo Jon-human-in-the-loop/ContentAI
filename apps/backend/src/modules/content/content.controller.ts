@@ -10,6 +10,7 @@ import {
   Query,
   Request,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ContentService } from './content.service';
 import { GeminiImageService } from '../generation/gemini-image.service';
 import { AiRouterService } from '../generation/ai-router.service';
@@ -29,6 +30,7 @@ export class ContentController {
    * POST /api/v1/content/requests
    * Create a new content generation request
    */
+  @Throttle({ medium: { limit: 10, ttl: 60000 } }) // 10 generations/min — protect AI costs
   @Post('requests')
   // @Roles('OWNER', 'ADMIN', 'EDITOR')
   async createRequest(@Request() req, @Body() dto: CreateContentRequestDto) {

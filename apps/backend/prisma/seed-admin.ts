@@ -52,12 +52,84 @@ async function main() {
       },
     });
 
-    return { org, user };
+    // 3. Crear cliente de prueba
+    const client = await tx.client.upsert({
+      where: { id: 'demo-client-id' }, // Stable ID for seeding
+      update: {},
+      create: {
+        id: 'demo-client-id',
+        orgId: org.id,
+        name: 'Nike Argentina',
+        industry: 'Deportes / Lifestyle',
+        branding: {
+          primaryColor: '#FF6600',
+          toneOfVoice: 'Inspiracional, empoderador, activo y directo.',
+          targetAudience: 'Atletas y jóvenes entusiastas del deporte en Argentina.',
+        },
+      },
+    });
+
+    // 4. Agregar notas al Brand Notebook
+    const notebookCount = await tx.brandNotebookEntry.count({ where: { clientId: client.id } });
+    if (notebookCount === 0) {
+      await tx.brandNotebookEntry.createMany({
+        data: [
+          {
+            clientId: client.id,
+            orgId: org.id,
+            title: 'Slogan Global',
+            content: 'Just Do It. Siempre usar en mayúsculas al final de los captions.',
+            category: 'GUIDELINE',
+          },
+          {
+            clientId: client.id,
+            orgId: org.id,
+            title: 'Lanzamiento Air Max 2026',
+            content: 'Enfoque en la tecnología de aire visible y materiales reciclados.',
+            category: 'PRODUCT',
+          },
+        ],
+      });
+    }
+
+    // 5. Crear una solicitud de contenido de prueba
+    const request = await tx.contentRequest.create({
+      data: {
+        orgId: org.id,
+        userId: user.id,
+        clientId: client.id,
+        brief: 'Lanzamiento de las nuevas Air Max para la temporada de invierno. Destacar comodidad y estilo urbano.',
+        pieces: {
+          create: [
+            {
+              orgId: org.id,
+              clientId: client.id,
+              type: 'POST',
+              status: 'APPROVED',
+              caption: 'El aire nunca se sintió tan ligero. Descubrí las nuevas Air Max Winter Edition. ❄️👟 #AirMax #Nike #JustDoIt',
+              hook: 'El aire nunca se sintió tan ligero.',
+              cta: 'Comprá ahora en el link de la bio.',
+              scheduledAt: new Date(new Date().getTime() + 86400000), // Mañana
+            },
+            {
+              orgId: org.id,
+              clientId: client.id,
+              type: 'STORY',
+              status: 'DRAFT',
+              caption: 'Coming soon... prepárate para el frío con lo último en tecnología Nike.',
+            }
+          ]
+        }
+      }
+    });
+
+    return { org, user, client, request };
   });
 
-  console.log('✅ Usuario admin procesado:');
-  console.log(`   Email:    ${result.user.email}`);
-  console.log(`   Acción:   Actualizado/Creado con nueva contraseña.`);
+  console.log('✅ Entorno de prueba procesado:');
+  console.log(`   Email:      ${result.user.email}`);
+  console.log(`   Cliente:    ${result.client.name}`);
+  console.log(`   Contenido:  ${result.request.pieces?.length || 2} piezas creadas.`);
 }
 
 main()

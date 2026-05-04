@@ -19,11 +19,5 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  // If no token is provided, fall back to a demo user instead of rejecting
-  handleRequest(err: any, user: any) {
-    if (err || !user) {
-      return { id: 'demo-user', orgId: 'demo-org', role: 'OWNER', email: 'demo@contentai.app' };
-    }
-    return user;
-  }
+  // handleRequest is left to default which throws UnauthorizedException if user is missing
 }

@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/primitives';
 
 const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -36,6 +37,7 @@ export function CalendarPage() {
   const [unschedulingId, setUnschedulingId] = useState<string | null>(null);
   const [detailPiece, setDetailPiece] = useState<any | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function loadEvents() {
@@ -123,7 +125,9 @@ export function CalendarPage() {
     try {
       const data = await api(`/content/pieces/${pieceId}`);
       setDetailPiece(data);
-    } catch {}
+    } catch (err) {
+      toast({ message: 'Error al cargar el detalle de la pieza', variant: 'destructive' });
+    }
     finally {
       setLoadingDetail(false);
     }
@@ -143,6 +147,7 @@ export function CalendarPage() {
       });
     } catch (err) {
       console.error('Failed to unschedule:', err);
+      toast({ message: 'No se pudo desprogramar la pieza. Reintentá en unos momentos.', variant: 'destructive' });
     } finally {
       setUnschedulingId(null);
     }

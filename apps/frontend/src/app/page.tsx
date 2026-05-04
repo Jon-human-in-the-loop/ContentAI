@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { getSession, clearSession, saveSession, isAuthenticated, AuthSession } from '@/lib/auth';
+import { ToastProvider } from '@/components/ui/primitives';
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -101,17 +102,19 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar
-        currentPage={currentPage}
-        onNavigate={handleNavigate}
-        user={session.user}
-        organization={session.organization}
-        onLogout={handleLogout}
-      />
-      <main className="flex-1 p-8 overflow-auto max-h-screen">
-        {renderPage()}
-      </main>
-    </div>
+    <ToastProvider>
+      <div className="flex min-h-screen bg-background">
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={handleNavigate}
+          user={session.user}
+          organization={session.organization}
+          onLogout={handleLogout}
+        />
+        <main className="flex-1 p-8 overflow-auto max-h-screen">
+          {renderPage()}
+        </main>
+      </div>
+    </ToastProvider>
   );
 }

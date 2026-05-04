@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/primitives';
 import { Progress } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/primitives';
 
 const statusColors: Record<string, string> = {
   GENERATING: 'bg-amber-100 text-amber-700',
@@ -50,6 +51,7 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
   const [videoJobs, setVideoJobs] = useState<Record<string, { id: string; status: string; videoUrl?: string }>>({});
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingIdea, setIsGeneratingIdea] = useState(false);
+  const { toast } = useToast();
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -93,8 +95,10 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
       requestId = response.id;
       setProgressLabel('Generando con IA...');
       setProgress(15);
+      toast({ message: 'Solicitud enviada. La IA está trabajando...', variant: 'success' });
     } catch (err: any) {
       setError(err?.message || 'Error al crear la solicitud');
+      toast({ message: 'Error al iniciar la generación', variant: 'destructive' });
       setGenerating(false);
       return;
     }
@@ -121,6 +125,7 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
             setProgress(100);
             setProgressLabel('¡Listo!');
             setGenerating(false);
+            toast({ message: `¡${pieces.length} piezas generadas con éxito!`, variant: 'success' });
             return;
           }
         }
@@ -150,7 +155,10 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
     try {
       await api(`/content/pieces/${pieceId}/approve`, { method: 'PATCH' });
       setResults(prev => prev.map(p => p.id === pieceId ? { ...p, status: 'APPROVED' } : p));
-    } catch {}
+      toast({ message: 'Pieza aprobada', variant: 'success' });
+    } catch {
+      toast({ message: 'Error al aprobar la pieza', variant: 'destructive' });
+    }
   };
 
   const handleReject = async (pieceId: string) => {
