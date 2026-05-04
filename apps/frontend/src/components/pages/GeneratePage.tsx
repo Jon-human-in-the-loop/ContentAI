@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/primitives';
 import { Progress } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 import { useToast } from '@/components/ui/primitives';
+import { useI18n } from '@/lib/i18n';
 
 const statusColors: Record<string, string> = {
   GENERATING: 'bg-amber-100 text-amber-700',
@@ -31,6 +32,7 @@ interface GeneratePageProps {
 }
 
 export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
+  const { t, language } = useI18n();
   const [clients, setClients] = useState<any[]>([]);
   const [selectedClient, setSelectedClient] = useState(initialClientId || '');
   const [brief, setBrief] = useState('');
@@ -229,8 +231,8 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
   return (
     <div className="space-y-6 animate-in">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Generar Contenido</h1>
-        <p className="text-muted-foreground text-sm mt-1">Creá contenido con IA para tus clientes</p>
+        <h1 className="text-3xl font-semibold tracking-tight">{t('generate.title')}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{t('generate.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-5 gap-6">
@@ -239,10 +241,10 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
           <Card className="border-0 shadow-sm">
             <CardContent className="p-5 space-y-5">
               <div>
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Cliente</Label>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{t('generate.client')}</Label>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
                   <SelectTrigger className="mt-1.5">
-                    <SelectValue placeholder="Seleccioná un cliente" />
+                    <SelectValue placeholder={t('generate.client_placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map((c: any) => (
@@ -260,7 +262,7 @@ export function GeneratePage({ initialClientId }: GeneratePageProps = {}) {
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Brief / Prompt</Label>
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">{t('generate.brief')}</Label>
                     <button 
                       onClick={async () => {
                         const clientInfo = clients.find(c => c.id === selectedClient);
@@ -316,19 +318,19 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                       disabled={isGeneratingIdea}
                       className="text-[10px] text-violet-600 font-medium hover:text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
                     >
-                      {isGeneratingIdea ? '✨ Pensando...' : '🪄 Dame una idea (Asistente AI)'}
+                      {isGeneratingIdea ? t('generate.thinking') : `🪄 ${t('generate.ai_idea')}`}
                     </button>
                   </div>
-                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ IA Copywriter</span>
+                  <span className="text-[10px] text-violet-600 bg-violet-100 px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hidden sm:flex">✦ {t('common.ai')} Copywriter</span>
                 </div>
                 <Textarea
                   value={brief}
                   onChange={(e) => setBrief(e.target.value)}
-                  placeholder="Ej: [Contexto] Habla sobre los 3 errores más comunes en Meta Ads hoy. [Objetivo] Invitarlos a agendar la auditoría gratuita. [Particularidad] Menciona que el CPC subió un 25% este año."
+                  placeholder={t('generate.brief_placeholder')}
                   className="mt-1.5 min-h-[120px] resize-y"
                 />
                 <div className="mt-2 text-[11px] text-muted-foreground leading-relaxed bg-slate-50 border border-slate-100 p-2.5 rounded-md">
-                  <span className="font-medium text-slate-700 block mb-1">💡 Tips para un mejor resultado:</span>
+                  <span className="font-medium text-slate-700 block mb-1">{t('generate.tips')}</span>
                   <ul className="list-disc pl-3 space-y-0.5 text-slate-500">
                     <li><strong>Contexto:</strong> Di de qué trata la pieza y el formato (directo, agresivo, empático).</li>
                     <li><strong>Objetivo:</strong> Cuál es el llamado a la acción (CTA) deseado.</li>
@@ -339,7 +341,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
               </div>
 
               <div className="space-y-4 pt-2">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Cantidad por tipo</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{t('generate.quantity')}</p>
                 {[
                   { icon: '▦', label: 'Posts', value: posts, set: setPosts, max: 30 },
                   { icon: '▶', label: 'Reels', value: reels, set: setReels, max: 20 },
@@ -376,7 +378,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
                 disabled={!selectedClient || !brief.trim() || generating}
                 className="w-full bg-gradient-to-r from-violet-500 to-emerald-500 text-white shadow-lg hover:shadow-xl transition-all h-11 text-sm font-medium"
               >
-                {generating ? 'Generando...' : `✦ Generar ${totalPieces} piezas`}
+                {generating ? t('common.loading') : `✦ ${t('generate.submit', { count: totalPieces })}`}
               </Button>
             </CardContent>
           </Card>
@@ -385,7 +387,7 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
             <Card className="border-0 shadow-sm">
               <div className="h-1" style={{ background: `linear-gradient(to right, ${client.primaryColor || client.branding?.primaryColor || '#7c3aed'}, ${client.secondaryColor || client.branding?.secondaryColor || '#10b981'})` }} />
               <CardContent className="p-4">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Contexto de marca</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">{t('generate.brand_context')}</p>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-6 h-6 rounded" style={{ background: client.primaryColor || client.branding?.primaryColor || '#7c3aed' }} />
                   <span className="text-sm font-medium">{client.name}</span>
@@ -584,9 +586,9 @@ NO escribas el post. NO uses bullet points. NO añadas introducción ni cierre. 
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-100 to-emerald-100 flex items-center justify-center mb-4">
                 <span className="text-3xl">✦</span>
               </div>
-              <h3 className="text-lg font-semibold mb-1">Listo para crear</h3>
+              <h3 className="text-lg font-semibold mb-1">{t('generate.empty_title')}</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
-                Seleccioná un cliente, escribí un brief y elegí cuántas piezas generar. La IA se encarga del resto.
+                {t('generate.empty_subtitle')}
               </p>
             </div>
           )}

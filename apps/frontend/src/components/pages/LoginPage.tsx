@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/primitives';
 import { Label } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 import { saveSession, AuthSession } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
 
 interface LoginPageProps {
   onLogin: (session: AuthSession) => void;
 }
 
 export function LoginPage({ onLogin }: LoginPageProps) {
+  const { t, language, setLanguage } = useI18n();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +68,32 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 flex items-center justify-center p-4">
+      {/* Language Switcher */}
+      <div className="absolute top-6 right-6 z-10">
+        <div className="flex items-center gap-1 p-1 bg-white/[0.05] rounded-lg border border-white/[0.08] backdrop-blur-md">
+          <button 
+            onClick={() => setLanguage('es')}
+            className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+              language === 'es' 
+                ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' 
+                : 'text-white/30 hover:text-white/60'
+            }`}
+          >
+            ES
+          </button>
+          <button 
+            onClick={() => setLanguage('en')}
+            className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${
+              language === 'en' 
+                ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' 
+                : 'text-white/30 hover:text-white/60'
+            }`}
+          >
+            EN
+          </button>
+        </div>
+      </div>
+
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-violet-500/10 rounded-full blur-3xl" />
@@ -79,7 +107,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             <span className="text-white font-bold text-xl">C</span>
           </div>
           <h1 className="text-2xl font-semibold text-white tracking-tight">ContentAI</h1>
-          <p className="text-white/40 text-sm mt-1">Agency Platform</p>
+          <p className="text-white/40 text-sm mt-1">{t('sidebar.agency_platform')}</p>
         </div>
 
         {/* Card */}
@@ -94,7 +122,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   : 'text-white/40 hover:text-white/60'
               }`}
             >
-              Iniciar sesión
+              {t('login.login')}
             </button>
             <button
               onClick={() => { setMode('register'); setError(''); }}
@@ -104,7 +132,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   : 'text-white/40 hover:text-white/60'
               }`}
             >
-              Crear cuenta
+              {t('login.register')}
             </button>
           </div>
 
@@ -112,9 +140,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             {mode === 'register' && (
               <>
                 <div>
-                  <Label className="text-xs text-white/60">Tu nombre</Label>
+                  <Label className="text-xs text-white/60">{t('login.name')}</Label>
                   <Input
-                    placeholder="Ej: Juan García"
+                    placeholder={language === 'es' ? "Ej: Juan García" : "e.g. John Doe"}
                     className="mt-1 bg-white/[0.06] border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/50"
                     value={form.name}
                     onChange={set('name')}
@@ -122,9 +150,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-white/60">Nombre de la agencia</Label>
+                  <Label className="text-xs text-white/60">{t('login.org_name')}</Label>
                   <Input
-                    placeholder="Ej: Digital Studio"
+                    placeholder={language === 'es' ? "Ej: Digital Studio" : "e.g. Digital Studio"}
                     className="mt-1 bg-white/[0.06] border-white/10 text-white placeholder:text-white/20 focus:border-violet-500/50"
                     value={form.organizationName}
                     onChange={set('organizationName')}
@@ -135,7 +163,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             )}
 
             <div>
-              <Label className="text-xs text-white/60">Email</Label>
+              <Label className="text-xs text-white/60">{t('login.email')}</Label>
               <Input
                 type="email"
                 placeholder="tu@agencia.com"
@@ -147,7 +175,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             </div>
 
             <div>
-              <Label className="text-xs text-white/60">Contraseña</Label>
+              <Label className="text-xs text-white/60">{t('login.password')}</Label>
               <Input
                 type="password"
                 placeholder="••••••••"
@@ -171,18 +199,18 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               disabled={loading}
             >
               {loading
-                ? 'Cargando...'
+                ? t('common.loading')
                 : mode === 'login'
-                ? 'Entrar'
-                : 'Crear cuenta'}
+                ? t('login.submit')
+                : t('login.register_submit')}
             </Button>
           </form>
 
           {mode === 'login' && (
             <p className="text-center text-xs text-white/30 mt-4">
-              ¿Primera vez?{' '}
+              {t('login.no_account')}{' '}
               <button onClick={() => setMode('register')} className="text-violet-400 hover:text-violet-300 underline">
-                Crear una cuenta gratis
+                {t('login.register')}
               </button>
             </p>
           )}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/primitives';
 import { api } from '@/lib/api';
 import { AuthUser, AuthOrg } from '@/lib/auth';
+import { useI18n } from '@/lib/i18n';
 
 interface SidebarProps {
   currentPage: string;
@@ -11,19 +12,20 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: '◈' },
-  { id: 'clients', label: 'Clientes', icon: '◎' },
-  { id: 'generate', label: 'Generar', icon: '✦', badge: 'AI' },
-  { id: 'content', label: 'Contenido', icon: '▦' },
-  { id: 'calendar', label: 'Calendario', icon: '▣' },
-  { id: 'analytics', label: 'Analytics', icon: '◆' },
-  { id: 'settings', label: 'Configuración', icon: '⚙' },
-  { id: 'config', label: 'Estado del Sistema', icon: '🔧' },
-];
-
 export function Sidebar({ currentPage, onNavigate, user, organization, onLogout }: SidebarProps) {
+  const { t, language, setLanguage } = useI18n();
   const [orgStats, setOrgStats] = useState({ tokensUsed: 0, monthlyTokenLimit: 1000000, plan: organization.plan || 'STARTER' });
+
+  const navItems = [
+    { id: 'dashboard', label: t('nav.dashboard'), icon: '◈' },
+    { id: 'clients', label: t('nav.clients'), icon: '◎' },
+    { id: 'generate', label: t('nav.generate'), icon: '✦', badge: t('common.ai') },
+    { id: 'content', label: t('nav.content'), icon: '▦' },
+    { id: 'calendar', label: t('nav.calendar'), icon: '▣' },
+    { id: 'analytics', label: t('nav.analytics'), icon: '◆' },
+    { id: 'settings', label: t('nav.settings'), icon: '⚙' },
+    { id: 'config', label: t('nav.system_status'), icon: '🔧' },
+  ];
 
   useEffect(() => {
     api('/settings/organization/current')
@@ -52,7 +54,7 @@ export function Sidebar({ currentPage, onNavigate, user, organization, onLogout 
           </div>
           <div>
             <span className="font-semibold text-[15px] tracking-tight text-white">ContentAI</span>
-            <span className="block text-[11px] text-white/40 tracking-wide uppercase">Agency Platform</span>
+            <span className="block text-[11px] text-white/40 tracking-wide uppercase">{t('sidebar.agency_platform')}</span>
           </div>
         </div>
       </div>
@@ -60,7 +62,7 @@ export function Sidebar({ currentPage, onNavigate, user, organization, onLogout 
       {/* Nav */}
       <nav className="flex-1 px-3">
         <div className="text-[10px] uppercase tracking-widest text-white/25 px-3 mb-3 font-semibold">
-          Menú
+          {t('nav.menu')}
         </div>
         {navItems.map((item) => {
           const active = currentPage === item.id;
@@ -88,6 +90,32 @@ export function Sidebar({ currentPage, onNavigate, user, organization, onLogout 
         })}
       </nav>
 
+      {/* Language Switcher */}
+      <div className="px-6 py-4 border-t border-white/[0.04]">
+        <div className="flex items-center justify-between p-1 bg-white/[0.05] rounded-lg border border-white/[0.08]">
+          <button 
+            onClick={() => setLanguage('es')}
+            className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+              language === 'es' 
+                ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' 
+                : 'text-white/30 hover:text-white/60'
+            }`}
+          >
+            ESPAÑOL
+          </button>
+          <button 
+            onClick={() => setLanguage('en')}
+            className={`flex-1 py-1 text-[10px] font-bold rounded-md transition-all ${
+              language === 'en' 
+                ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20' 
+                : 'text-white/30 hover:text-white/60'
+            }`}
+          >
+            ENGLISH
+          </button>
+        </div>
+      </div>
+
       {/* User + org footer */}
       <div className="px-3 mb-3">
         <div className="px-4 py-4 rounded-xl bg-white/[0.05] border border-white/[0.06]">
@@ -98,7 +126,7 @@ export function Sidebar({ currentPage, onNavigate, user, organization, onLogout 
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[12.5px] text-white/80 font-medium truncate">{organization.name}</div>
-              <div className="text-[10.5px] text-white/30">Plan {orgStats.plan}</div>
+              <div className="text-[10.5px] text-white/30">{t('common.plan')} {orgStats.plan}</div>
             </div>
           </div>
           <div className="w-full bg-white/10 rounded-full h-1.5">
@@ -108,7 +136,7 @@ export function Sidebar({ currentPage, onNavigate, user, organization, onLogout 
             />
           </div>
           <div className="text-[10px] text-white/30 mt-1.5">
-            {formatTokens(orgStats.tokensUsed)} / {formatTokens(orgStats.monthlyTokenLimit)} tokens
+            {formatTokens(orgStats.tokensUsed)} / {formatTokens(orgStats.monthlyTokenLimit)} {t('common.tokens')}
           </div>
         </div>
 
@@ -123,7 +151,7 @@ export function Sidebar({ currentPage, onNavigate, user, organization, onLogout 
           </div>
           <button
             onClick={onLogout}
-            title="Cerrar sesión"
+            title={t('nav.logout')}
             className="text-white/20 hover:text-red-400 transition-colors text-xs opacity-0 group-hover:opacity-100"
           >
             ⏻

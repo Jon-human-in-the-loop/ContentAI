@@ -5,15 +5,19 @@ import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { getSession, clearSession, saveSession, isAuthenticated, AuthSession } from '@/lib/auth';
 import { ToastProvider } from '@/components/ui/primitives';
+import { I18nProvider, useI18n } from '@/lib/i18n';
 
-const PageLoader = () => (
-  <div className="flex items-center justify-center h-full min-h-[400px]">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
-      <p className="text-sm text-muted-foreground">Cargando...</p>
+const PageLoader = () => {
+  const { t } = useI18n();
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const DashboardPage = dynamic(() => import('@/components/pages/DashboardPage').then(m => ({ default: m.DashboardPage })), { loading: PageLoader, ssr: false });
 const ClientsPage   = dynamic(() => import('@/components/pages/ClientsPage').then(m => ({ default: m.ClientsPage })),     { loading: PageLoader, ssr: false });
@@ -102,19 +106,21 @@ export default function Home() {
   }
 
   return (
-    <ToastProvider>
-      <div className="flex min-h-screen bg-background">
-        <Sidebar
-          currentPage={currentPage}
-          onNavigate={handleNavigate}
-          user={session.user}
-          organization={session.organization}
-          onLogout={handleLogout}
-        />
-        <main className="flex-1 p-8 overflow-auto max-h-screen">
-          {renderPage()}
-        </main>
-      </div>
-    </ToastProvider>
+    <I18nProvider>
+      <ToastProvider>
+        <div className="flex min-h-screen bg-background">
+          <Sidebar
+            currentPage={currentPage}
+            onNavigate={handleNavigate}
+            user={session.user}
+            organization={session.organization}
+            onLogout={handleLogout}
+          />
+          <main className="flex-1 p-8 overflow-auto max-h-screen">
+            {renderPage()}
+          </main>
+        </div>
+      </ToastProvider>
+    </I18nProvider>
   );
 }
