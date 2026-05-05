@@ -6,6 +6,17 @@ Plataforma SaaS de generación y gestión de contenido para redes sociales, cons
 
 ---
 
+## 🚀 Visión y Valor Estratégico
+
+**ContentAI** no es una simple herramienta de escritura; es una **infraestructura empresarial** diseñada para ser el núcleo operativo de agencias de marketing modernas.
+
+*   **Orquestación Multi-Agente:** Utiliza un enrutador inteligente para equilibrar tareas de alta creatividad (Claude Sonnet) con tareas mecánicas (Claude Haiku), reduciendo costos de API hasta en un 70%.
+*   **Brand Notebook (Memoria Semántica):** Una base de conocimiento profunda para cada cliente que garantiza que la IA escriba con una alineación de marca, tono y reglas perfectas.
+*   **Rendimiento a Escala de Agencia:** Construido con un pipeline asincrónico (BullMQ) para procesar cientos de piezas de contenido simultáneamente sin bloquear la interfaz.
+*   **Bilingüe y Multi-Tenant:** Preparado para mercados internacionales con soporte nativo ES/EN y aislamiento total de datos para agencias que gestionan más de 100 clientes.
+
+---
+
 ## ¿Qué hace?
 
 Una agencia usa ContentAI para gestionar todos sus clientes desde un mismo lugar:

@@ -6,6 +6,17 @@ SaaS platform for social media content generation and management, built for digi
 
 ---
 
+## 🚀 Vision & Strategic Value
+
+**ContentAI** is not just an AI writing tool; it is a **business infrastructure** designed to be the operational core of modern marketing agencies.
+
+*   **Multi-Agent Orchestration:** Uses an intelligent router to balance high-creativity tasks (Claude Sonnet) with mechanical ones (Claude Haiku), reducing API costs by up to 70%.
+*   **Brand Notebook (Semantic Memory):** A deep knowledge base for each client that ensures the AI writes with perfect brand alignment, tone, and guidelines.
+*   **Agency-Scale Performance:** Built with an asynchronous pipeline (BullMQ) to process hundreds of content pieces simultaneously without blocking the user interface.
+*   **Bilingual & Multi-Tenant:** Ready for international markets with native ES/EN support and complete data isolation for agencies managing 100+ clients.
+
+---
+
 ## What does it do?
 
 An agency uses ContentAI to manage all its clients in one place:
