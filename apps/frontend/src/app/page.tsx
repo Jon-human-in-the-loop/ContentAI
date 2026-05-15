@@ -96,12 +96,14 @@ export default function Home() {
   // Not authenticated → show login
   if (!session) {
     return (
-      <LoginPage
-        onLogin={(s) => {
-          saveSession(s);
-          setSession(s);
-        }}
-      />
+      <I18nProvider>
+        <LoginPage
+          onLogin={(s) => {
+            saveSession(s);
+            setSession(s);
+          }}
+        />
+      </I18nProvider>
     );
   }
 
